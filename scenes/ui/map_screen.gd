@@ -110,6 +110,8 @@ func _draw_map() -> void:
 					color = Color(0.2, 0.55, 0.55)
 				DungeonGrid.STAIRS:
 					color = Color(0.9, 0.72, 0.3)
+				DungeonGrid.LOCKED_STAIRS:
+					color = Color(0.75, 0.25, 0.3)
 				_:
 					var zone := dungeon.zone_at(pos)
 					color = Dungeon.ZONE_MAP_COLORS[zone % 4].darkened(0.35) if zone != -1 else Color(0.42, 0.4, 0.47)

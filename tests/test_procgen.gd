@@ -28,6 +28,23 @@ func _init() -> void:
 			failures += 1
 			continue
 
+		# Dual stairwells: boss stairs sealed, public stairs active and reachable
+		if fd.stairs_free == Vector2i(-1, -1):
+			if fd.grid.get_tile(fd.stairs) != DungeonGridScript.STAIRS:
+				print("FAIL seed %d: no public stairwell and boss stairs not active" % seed_value)
+				failures += 1
+		else:
+			if fd.grid.get_tile(fd.stairs) != DungeonGridScript.LOCKED_STAIRS:
+				print("FAIL seed %d: boss stairwell not sealed" % seed_value)
+				failures += 1
+			if fd.grid.get_tile(fd.stairs_free) != DungeonGridScript.STAIRS \
+					or not _reachable(fd.grid, fd.spawn, fd.stairs_free):
+				print("FAIL seed %d: public stairwell missing or unreachable" % seed_value)
+				failures += 1
+			if fd.saferoom.has_point(fd.stairs_free) or fd.shop_room.has_point(fd.stairs_free):
+				print("FAIL seed %d: public stairwell inside saferoom/shop room" % seed_value)
+				failures += 1
+
 		if floor_num == 3 and fd.grid.get_tile(fd.spawn) != DungeonGridScript.SAFE:
 			print("FAIL seed %d: floor 3 spawn is not inside a saferoom" % seed_value)
 			failures += 1

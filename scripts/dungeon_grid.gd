@@ -3,7 +3,7 @@ extends RefCounted
 ## Single source of spatial truth: tile types + entity occupancy.
 ## All movement/combat queries go through this; no physics anywhere.
 
-enum { WALL, FLOOR, STAIRS, SAFE }
+enum { WALL, FLOOR, STAIRS, SAFE, LOCKED_STAIRS }
 
 var width: int
 var height: int

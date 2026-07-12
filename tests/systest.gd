@@ -208,9 +208,13 @@ func _run() -> void:
 					if room.has_point(fd.stairs) and room.has_point(zb.grid_pos):
 						no_zone_boss_at_stairs = false
 		check(no_zone_boss_at_stairs, "no neighbourhood boss shares the stairs room")
+		check(dungeon.grid.get_tile(fd.stairs) == DungeonGrid.LOCKED_STAIRS, "boss stairwell starts sealed")
+		check(fd.stairs_free != Vector2i(-1, -1) \
+			and dungeon.grid.get_tile(fd.stairs_free) == DungeonGrid.STAIRS, "public stairwell exists and is active")
 		var borough_pos: Vector2i = borough.grid_pos
 		dungeon.turn_manager._kill_enemy(borough)
 		await get_tree().process_frame
+		check(dungeon.grid.get_tile(fd.stairs) == DungeonGrid.STAIRS, "boss death unseals his stairwell")
 		var dropped: Object = dungeon.grid.entity_at(borough_pos)
 		check(dropped is LootBox and (dropped as LootBox).tier == 3, "borough boss drops a platinum box")
 		check(dungeon.explored.has(Vector2i(0, 0)), "borough boss death reveals the full map")

@@ -56,6 +56,8 @@ func _ready() -> void:
 	_spawn_enemies(floor_num)
 	_spawn_bosses(floor_num)
 	_spawn_borough_boss(floor_num)
+	if borough_boss == null:
+		unlock_stairs()  # no warden, no seal
 	_spawn_shopkeeper(floor_num)
 	_spawn_guide()
 	_spawn_player()
@@ -78,8 +80,8 @@ func _ready() -> void:
 
 
 func _build_tile_layer() -> void:
-	# Runtime tileset: wall / floor / stairs / safe / 4 zone-tinted floors.
-	var img := Image.create(TILE * 8, TILE, false, Image.FORMAT_RGBA8)
+	# Runtime tileset: wall / floor / stairs / safe / 4 zone floors / locked stairs.
+	var img := Image.create(TILE * 9, TILE, false, Image.FORMAT_RGBA8)
 	img.fill_rect(Rect2i(0, 0, TILE, TILE), Color(0.13, 0.11, 0.16))          # wall
 	img.fill_rect(Rect2i(TILE, 0, TILE, TILE), Color(0.32, 0.29, 0.36))       # floor
 	img.fill_rect(Rect2i(TILE, 0, TILE, 1), Color(0.27, 0.24, 0.31))          # floor grid line
@@ -94,11 +96,13 @@ func _build_tile_layer() -> void:
 		img.fill_rect(Rect2i(TILE * (4 + z), 0, TILE, TILE), zc)
 		img.fill_rect(Rect2i(TILE * (4 + z), 0, TILE, 1), zc.darkened(0.15))
 		img.fill_rect(Rect2i(TILE * (4 + z), 0, 1, TILE), zc.darkened(0.15))
+	img.fill_rect(Rect2i(TILE * 8, 0, TILE, TILE), Color(0.32, 0.29, 0.36))    # locked stairs base
+	img.fill_rect(Rect2i(TILE * 8 + 3, 3, TILE - 6, TILE - 6), Color(0.6, 0.18, 0.22))
 
 	var src := TileSetAtlasSource.new()
 	src.texture = ImageTexture.create_from_image(img)
 	src.texture_region_size = Vector2i(TILE, TILE)
-	for i in 8:
+	for i in 9:
 		src.create_tile(Vector2i(i, 0))
 
 	var ts := TileSet.new()
@@ -118,12 +122,17 @@ func _build_tile_layer() -> void:
 				var zone: int = floor_data.zone_of.get(pos, -1)
 				if zone != -1:
 					atlas_x = 4 + (zone % 4)
+			elif t == DungeonGrid.LOCKED_STAIRS:
+				atlas_x = 8
 			_tile_layer.set_cell(pos, 0, Vector2i(atlas_x, 0))
 
 
 func _spawn_stairs_marker() -> void:
 	var marker := Entity.make(">", Color(0.2, 0.15, 0.05), floor_data.stairs)
 	_entities_root.add_child(marker)  # purely visual; stairs is a tile
+	if floor_data.stairs_free != Vector2i(-1, -1):
+		var free_marker := Entity.make(">", Color(0.2, 0.15, 0.05), floor_data.stairs_free)
+		_entities_root.add_child(free_marker)
 
 
 func _spawn_player() -> void:
@@ -231,8 +240,16 @@ func _spawn_borough_boss(floor_num: int) -> void:
 					grid.place_entity(borough_boss, pos)
 					enemies.append(borough_boss)
 					_entities_root.add_child(borough_boss)
-					Events.msg.bind("%s has claimed this floor's stairwell. Tribute or violence — dealer's choice." % borough_boss.boss_name, &"system").call_deferred()
+					Events.msg.bind("%s has sealed this floor's express stairwell. A public stairwell exists elsewhere. Probably." % borough_boss.boss_name, &"system").call_deferred()
 					return
+
+
+## Unseals the borough boss's stairwell (on his death, or if he never spawned).
+func unlock_stairs() -> void:
+	if grid.get_tile(floor_data.stairs) != DungeonGrid.LOCKED_STAIRS:
+		return
+	grid.set_tile(floor_data.stairs, DungeonGrid.STAIRS)
+	_tile_layer.set_cell(floor_data.stairs, 0, Vector2i(DungeonGrid.STAIRS, 0))
 
 
 ## --- Fog of war for the map screen ---

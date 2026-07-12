@@ -7,7 +7,8 @@ extends RefCounted
 class FloorData:
 	var grid: DungeonGrid
 	var spawn: Vector2i
-	var stairs: Vector2i
+	var stairs: Vector2i  # the borough boss's stairwell — sealed until he dies
+	var stairs_free := Vector2i(-1, -1)  # the public stairwell, always active
 	var rooms: Array[Rect2i] = []
 	var saferoom := Rect2i()  # zero-size = no saferoom on this floor
 	var shop_room := Rect2i()  # dedicated shop room — nothing else spawns here
@@ -70,7 +71,7 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 			far_dist = d
 			far_room = room
 	fd.stairs = far_room.get_center()
-	fd.grid.set_tile(fd.stairs, DungeonGrid.STAIRS)
+	fd.grid.set_tile(fd.stairs, DungeonGrid.LOCKED_STAIRS)  # sealed by the borough boss
 
 	# 4b. Saferoom: floor 3 uses the spawn room (the race/class rebrand happens
 	# in safety); other floors hide one in a random non-spawn, non-stairs room.
@@ -101,12 +102,34 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 		fd.shop_room = shop_candidates[rng.randi_range(0, shop_candidates.size() - 1)]
 		fd.shop_pos = fd.shop_room.get_center()
 
-	# 4d. Neighbourhoods: cluster rooms around 2-4 spread-out seed rooms
+	# 4d. Public stairwell: a second, always-active stairway in another room,
+	# so descending never REQUIRES the borough boss fight.
+	var free_candidates: Array[Rect2i] = []
+	for room in fd.rooms:
+		if room != fd.rooms[0] and room != far_room and room != fd.saferoom and room != fd.shop_room:
+			free_candidates.append(room)
+	if free_candidates.is_empty():
+		# Degenerate floor: keep the guarded stairs usable instead of soft-locking
+		fd.grid.set_tile(fd.stairs, DungeonGrid.STAIRS)
+	else:
+		var best_room := free_candidates[0]
+		var best_d := -1.0
+		for room in free_candidates:
+			var d := Vector2(room.get_center()).distance_to(Vector2(fd.spawn))
+			if d > best_d:
+				best_d = d
+				best_room = room
+		fd.stairs_free = best_room.get_center()
+		fd.grid.set_tile(fd.stairs_free, DungeonGrid.STAIRS)
+
+	# 4e. Neighbourhoods: cluster rooms around 2-4 spread-out seed rooms
 	_build_zones(fd, rng)
 
 	# 5. Enemy + loot box placement on random floor tiles (not room 0, not near spawn)
 	var enemy_count := 8 + floor_num * 2
 	var taken := { fd.spawn: true, fd.stairs: true }
+	if fd.stairs_free != Vector2i(-1, -1):
+		taken[fd.stairs_free] = true
 	for i in enemy_count:
 		var pos := _random_floor_tile(fd, rng, taken, 6)
 		if pos != Vector2i(-1, -1):

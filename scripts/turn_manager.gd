@@ -106,6 +106,8 @@ func _kill_enemy(enemy: Entity) -> void:
 
 	if enemy.is_borough:
 		Events.msg("BOROUGH BOSS DEFEATED: %s. The stairwell is under new management. Yours." % enemy.boss_name, &"system")
+		dungeon.unlock_stairs()
+		Events.msg("The sealed stairwell grinds open. Express route: unlocked.", &"system")
 		dungeon.spawn_loot_box(3, enemy.grid_pos)  # guaranteed platinum box
 		dungeon.reveal_all()
 		Events.msg("Full borough survey unlocked. The map is yours.", &"system")

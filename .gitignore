@@ -1,0 +1,14 @@
+# Local tool settings
+.claude/settings.local.json
+
+# Godot
+.godot/
+*.import
+export_presets.cfg
+
+# Generated
+screenshots/
+
+# Mono/.NET (if C# is ever added)
+.mono/
+mono_crash.*.json

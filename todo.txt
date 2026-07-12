@@ -1,0 +1,26 @@
+# Prioritized 2026-07-12 (tiers ordered top to bottom)
+
+## Tier 1 — quick wins (small changes, immediate payoff)
+[DONE 2026-07-12] show equipped item stats when selected
+[DONE 2026-07-12] item comparison (selected vs equipped, side by side)
+[DONE 2026-07-12] only choose class/race at floor 3 (not level 3)
+[DONE 2026-07-12] make enemies stronger as floors go up (2 new deep-floor enemies, scaled XP, weighted spawns)
+
+## Tier 2 — run pacing (the DCC pressure-cooker feel)
+[DONE 2026-07-12] floor timers (250 + 25/floor turn budget, warnings at 100/50/25, last-10 countdown, escalating crush damage after collapse)
+
+## Tier 3 — the saferoom cluster (build in this order, they nest)
+[DONE 2026-07-12] saferooms (one per floor; floor 3 spawns you in one for race/class; regen, enemy lockout, crush immunity)
+[DONE 2026-07-12] shops/money (gold from kills/boxes; Bopca shopkeeper entity per floor, separate from saferooms; CHA discounts)
+[DONE 2026-07-12] tutorial/game guides (guide NPC in saferooms, 6-page System-snark tutorial)
+
+## Tier 4 — the world-building cluster (build in this order)
+[DONE 2026-07-12] neighbourhoods with one type of enemy (2-4 named zones per floor, tinted tiles, entry announcements)
+[DONE 2026-07-12] larger floors (68x44, more rooms/enemies/boxes, turn budget rebalanced to 340+30/floor)
+[DONE 2026-07-12] neighbourhood bosses + maps (boss per zone with 4x HP/5x XP + gold box; fog-of-war map on M, boss kill reveals district)
+
+## Tier 5 — content layers (any time, but most fun after the above)
+[DONE 2026-07-12] achievements (15 absurd achievements, persist across runs to user://achievements.json, archive on V)
+[DONE 2026-07-12] quests (guide posts one job per floor: cull/bounty/boxes; accept + claim at any guide, gold rewards)
+
+## ALL TIERS COMPLETE — next ideas: System AI announcer, fame/viewers, sound, real art, floor themes

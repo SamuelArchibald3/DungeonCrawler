@@ -12,6 +12,7 @@ signal hud_refresh
 signal run_started
 signal enemy_killed(def_id: StringName, is_boss: bool)
 signal all_bosses_cleared
+signal borough_boss_killed
 signal box_opened(tier: int)
 signal item_equipped(item: ItemData)
 signal item_bought(cha: int)

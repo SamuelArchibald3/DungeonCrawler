@@ -80,6 +80,11 @@ func _build_legend() -> void:
 			else:
 				boss_note = " — boss DEFEATED, district mapped"
 		lines.append("  [color=%s]■[/color] %s%s" % [color.to_html(false), display_name, boss_note])
+	var borough: Variant = dungeon.borough_boss
+	if borough != null and is_instance_valid(borough) and borough.hp > 0:
+		lines.append("  [color=#ff4d8c]■[/color] %s holds the stairwell — defeat for a full survey" % borough.boss_name)
+	else:
+		lines.append("  [color=#909090]■ Stairwell liberated.[/color]")
 	_legend.append_text("\n".join(lines))
 
 
@@ -118,6 +123,9 @@ func _draw_map() -> void:
 		var boss: Variant = info["boss"]
 		if boss != null and is_instance_valid(boss) and boss.hp > 0 and dungeon.explored.has(boss.grid_pos):
 			_draw_marker(origin, scale, boss.grid_pos, Color(1.0, 0.3, 0.25))
+	var borough: Variant = dungeon.borough_boss
+	if borough != null and is_instance_valid(borough) and borough.hp > 0 and dungeon.explored.has(borough.grid_pos):
+		_draw_marker(origin, scale, borough.grid_pos, Color(1.0, 0.3, 0.55))
 	_draw_marker(origin, scale, dungeon.player.grid_pos, Color.WHITE)
 
 

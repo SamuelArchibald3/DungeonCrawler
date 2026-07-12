@@ -24,3 +24,8 @@
 [DONE 2026-07-12] quests (guide posts one job per floor: cull/bounty/boxes; accept + claim at any guide, gold rewards)
 
 ## ALL TIERS COMPLETE — next ideas: System AI announcer, fame/viewers, sound, real art, floor themes
+
+## NEW ##
+
+borough bosses that are stronger but provide better rewards
+make items have an item level that increases with the floor they are dropped on and gives better stats

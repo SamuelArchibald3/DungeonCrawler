@@ -20,6 +20,7 @@ var max_hp := 0
 var xp_value := 0
 var turn_counter := 0
 var is_boss := false
+var is_borough := false
 var boss_name := ""
 var zone_index := -1
 var glyph_size := 13
@@ -58,6 +59,19 @@ static func make_boss(def: EnemyDef, pos: Vector2i, floor_num: int, name_: Strin
 	e.xp_value *= 5
 	e.color = Color(1.0, 0.4, 0.35)
 	e.glyph_size = 16
+	return e
+
+
+## Borough boss: one per floor, guards the stairwell. Stronger than any
+## neighbourhood boss; rewards to match.
+static func make_borough_boss(def: EnemyDef, pos: Vector2i, floor_num: int, name_: String) -> Entity:
+	var e := make_boss(def, pos, floor_num, name_, -1)
+	e.is_borough = true
+	e.max_hp *= 2   # 8x base
+	e.hp = e.max_hp
+	e.xp_value *= 2  # 10x base
+	e.color = Color(1.0, 0.3, 0.55)
+	e.glyph_size = 18
 	return e
 
 

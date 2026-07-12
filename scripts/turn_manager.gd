@@ -104,7 +104,13 @@ func _kill_enemy(enemy: Entity) -> void:
 	dungeon.grid.remove_entity(enemy.grid_pos)
 	dungeon.enemies.erase(enemy)
 
-	if enemy.is_boss:
+	if enemy.is_borough:
+		Events.msg("BOROUGH BOSS DEFEATED: %s. The stairwell is under new management. Yours." % enemy.boss_name, &"system")
+		dungeon.spawn_loot_box(3, enemy.grid_pos)  # guaranteed platinum box
+		dungeon.reveal_all()
+		Events.msg("Full borough survey unlocked. The map is yours.", &"system")
+		Events.borough_boss_killed.emit()
+	elif enemy.is_boss:
 		Events.msg("NEIGHBOURHOOD BOSS DEFEATED: %s. The locals do not send their regards." % enemy.boss_name, &"system")
 		dungeon.spawn_loot_box(2, enemy.grid_pos)  # guaranteed gold box
 		if enemy.zone_index != -1:

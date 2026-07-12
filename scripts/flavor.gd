@@ -74,6 +74,21 @@ static func boss_name(def_id: StringName) -> String:
 	return BOSS_NAMES.get(def_id, "Middle Manager")
 
 
+const BOROUGH_BOSS_NAMES := [
+	"Grull, Borough Landlord",
+	"The Rent Collector",
+	"Magnus Fleshpile, Zoning Commissioner",
+	"Her Dampness, Baroness of Mildew",
+	"Chairman Gnash",
+	"Big Lorraine, Stairwell Cartel Boss",
+	"Deputy Mayor Chewface",
+]
+
+
+static func borough_boss_name(rng: RandomNumberGenerator) -> String:
+	return BOROUGH_BOSS_NAMES[rng.randi_range(0, BOROUGH_BOSS_NAMES.size() - 1)]
+
+
 const SHOP_GREETINGS := [
 	"The Bopca beams: 'A customer! A live one, even!'",
 	"'Welcome, welcome. Everything is authentic. Some of it is even safe.'",

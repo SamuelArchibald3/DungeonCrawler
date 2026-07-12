@@ -8,6 +8,7 @@ const DEFS := {
 	&"first_blood": ["First Blood (It Was Probably a Rat)", "Kill your first monster."],
 	&"exterminator": ["Pest Control Technician", "Kill 10 monsters in one run."],
 	&"boss_slayer": ["Middle Management Removal", "Defeat a neighbourhood boss."],
+	&"regime_change": ["Regime Change", "Defeat a borough boss."],
 	&"hostile_takeover": ["Hostile Takeover", "Clear every neighbourhood boss on a floor."],
 	&"first_box": ["Baby's First Gambling Addiction", "Open a loot box."],
 	&"whale": ["Certified Whale", "Open 8 loot boxes in one run."],
@@ -36,6 +37,7 @@ func _ready() -> void:
 	Events.run_started.connect(_on_run_started)
 	Events.enemy_killed.connect(_on_enemy_killed)
 	Events.all_bosses_cleared.connect(func() -> void: unlock(&"hostile_takeover"))
+	Events.borough_boss_killed.connect(func() -> void: unlock(&"regime_change"))
 	Events.box_opened.connect(_on_box_opened)
 	Events.item_equipped.connect(_on_item_equipped)
 	Events.item_bought.connect(_on_item_bought)

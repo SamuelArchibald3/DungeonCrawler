@@ -29,6 +29,7 @@ var enemies: Array[Entity] = []
 var turn_manager: TurnManager
 var shopkeeper: Shopkeeper
 var guide: Guide
+var borough_boss: Entity
 
 ## Neighbourhoods: aligned with floor_data.zones by index
 var zones_runtime: Array = []  # [{ "name": String, "def": EnemyDef, "boss": Entity }]
@@ -54,6 +55,7 @@ func _ready() -> void:
 	_spawn_loot_boxes()
 	_spawn_enemies(floor_num)
 	_spawn_bosses(floor_num)
+	_spawn_borough_boss(floor_num)
 	_spawn_shopkeeper(floor_num)
 	_spawn_guide()
 	_spawn_player()
@@ -183,8 +185,9 @@ func _spawn_bosses(floor_num: int) -> void:
 		var rooms: Array = floor_data.zones[zone]["rooms"]
 		var best := Rect2i()
 		for room: Rect2i in rooms:
-			if room == floor_data.saferoom or room == floor_data.shop_room:
-				continue
+			if room == floor_data.saferoom or room == floor_data.shop_room \
+					or room.has_point(floor_data.stairs):
+				continue  # the stairs room belongs to the borough boss
 			if room.get_area() > best.get_area():
 				best = room
 		if best.size == Vector2i.ZERO:
@@ -203,6 +206,35 @@ func _spawn_bosses(floor_num: int) -> void:
 				break
 
 
+## One borough boss per floor, holding the stairs room: the deepest native
+## enemy type, upscaled well past any neighbourhood boss.
+func _spawn_borough_boss(floor_num: int) -> void:
+	var stairs_room := Rect2i()
+	for room in floor_data.rooms:
+		if room.has_point(floor_data.stairs):
+			stairs_room = room
+			break
+	if stairs_room.size == Vector2i.ZERO:
+		return
+	var best_def: EnemyDef = null
+	for def in _enemy_defs:
+		if def.min_floor <= floor_num and (best_def == null or def.min_floor > best_def.min_floor):
+			best_def = def
+	for radius in range(1, 4):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				var pos := floor_data.stairs + Vector2i(dx, dy)
+				if stairs_room.has_point(pos) and grid.is_open(pos) \
+						and grid.get_tile(pos) == DungeonGrid.FLOOR:
+					borough_boss = Entity.make_borough_boss(
+						best_def, pos, floor_num, Flavor.borough_boss_name(GameState.rng))
+					grid.place_entity(borough_boss, pos)
+					enemies.append(borough_boss)
+					_entities_root.add_child(borough_boss)
+					Events.msg.bind("%s has claimed this floor's stairwell. Tribute or violence — dealer's choice." % borough_boss.boss_name, &"system").call_deferred()
+					return
+
+
 ## --- Fog of war for the map screen ---
 
 func reveal_around(pos: Vector2i, radius: int = 4) -> void:
@@ -211,6 +243,12 @@ func reveal_around(pos: Vector2i, radius: int = 4) -> void:
 			var p := pos + Vector2i(dx, dy)
 			if grid.in_bounds(p):
 				explored[p] = true
+
+
+func reveal_all() -> void:
+	for y in grid.height:
+		for x in grid.width:
+			explored[Vector2i(x, y)] = true
 
 
 func reveal_zone(zone: int) -> void:

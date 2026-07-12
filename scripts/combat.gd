@@ -13,7 +13,9 @@ static func player_attack_damage(c: CharacterData, enemy: Entity, rng: RandomNum
 
 static func enemy_attack_damage(enemy: Entity, floor_num: int, c: CharacterData) -> int:
 	var dmg := enemy.enemy_def.attack + (floor_num - 1) - c.get_defense()
-	if enemy.is_boss:
+	if enemy.is_borough:
+		dmg += 4
+	elif enemy.is_boss:
 		dmg += 2
 	if c.has_ability(&"thick_skin"):
 		dmg -= 1

@@ -189,6 +189,33 @@ func _run() -> void:
 		check(zone_revealed, "boss death reveals its district on the map")
 		check(Achievements.is_unlocked(&"boss_slayer"), "boss kill unlocks Middle Management Removal")
 
+	# --- Borough boss: guards the stairs, outclasses zone bosses, pays out ---
+	var borough: Entity = dungeon.borough_boss
+	check(borough != null, "borough boss spawned")
+	if borough != null:
+		check(borough.is_borough and borough.is_boss, "borough boss flagged correctly")
+		check(borough.max_hp >= borough.enemy_def.max_hp * 8, "borough boss has 8x+ HP")
+		var stairs_room_found := false
+		for room: Rect2i in fd.rooms:
+			if room.has_point(fd.stairs) and room.has_point(borough.grid_pos):
+				stairs_room_found = true
+		check(stairs_room_found, "borough boss stands in the stairs room")
+		var no_zone_boss_at_stairs := true
+		for info: Dictionary in dungeon.zones_runtime:
+			var zb: Variant = info["boss"]
+			if zb != null and is_instance_valid(zb) and zb.hp > 0:
+				for room: Rect2i in fd.rooms:
+					if room.has_point(fd.stairs) and room.has_point(zb.grid_pos):
+						no_zone_boss_at_stairs = false
+		check(no_zone_boss_at_stairs, "no neighbourhood boss shares the stairs room")
+		var borough_pos: Vector2i = borough.grid_pos
+		dungeon.turn_manager._kill_enemy(borough)
+		await get_tree().process_frame
+		var dropped: Object = dungeon.grid.entity_at(borough_pos)
+		check(dropped is LootBox and (dropped as LootBox).tier == 3, "borough boss drops a platinum box")
+		check(dungeon.explored.has(Vector2i(0, 0)), "borough boss death reveals the full map")
+		check(Achievements.is_unlocked(&"regime_change"), "borough kill unlocks Regime Change")
+
 	# --- Map screen ---
 	check(not dungeon.explored.is_empty(), "spawn area starts explored")
 	main.map_screen.open(dungeon)

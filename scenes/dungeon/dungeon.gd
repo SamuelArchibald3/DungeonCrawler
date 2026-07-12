@@ -183,7 +183,7 @@ func _spawn_bosses(floor_num: int) -> void:
 		var rooms: Array = floor_data.zones[zone]["rooms"]
 		var best := Rect2i()
 		for room: Rect2i in rooms:
-			if room == floor_data.saferoom:
+			if room == floor_data.saferoom or room == floor_data.shop_room:
 				continue
 			if room.get_area() > best.get_area():
 				best = room

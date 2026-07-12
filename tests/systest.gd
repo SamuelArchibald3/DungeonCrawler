@@ -201,6 +201,13 @@ func _run() -> void:
 	if dungeon.shopkeeper != null:
 		var keeper: Shopkeeper = dungeon.shopkeeper
 		check(keeper.stock.size() == 6, "shop stocks 6 items (%d)" % keeper.stock.size())
+		var shop_room: Rect2i = dungeon.floor_data.shop_room
+		check(shop_room.grow(-1).has_point(keeper.grid_pos), "Bopca stands clear of the shop room's doorways")
+		var intruders := false
+		for e: Entity in dungeon.enemies:
+			if shop_room.has_point(e.grid_pos):
+				intruders = true
+		check(not intruders, "no enemies spawn in the shop room")
 		main.shop_screen.open_for(keeper)
 		c.gold = 1000
 		var stock_before: int = keeper.stock.size()

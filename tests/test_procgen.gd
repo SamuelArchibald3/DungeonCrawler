@@ -61,6 +61,25 @@ func _init() -> void:
 			if fd.grid.get_tile(fd.shop_pos) != DungeonGridScript.FLOOR or seen.has(fd.shop_pos):
 				bad_placement = true
 			seen[fd.shop_pos] = true
+			# Bopca must be strictly interior — a perimeter tile could plug a doorway
+			if not fd.shop_room.grow(-1).has_point(fd.shop_pos):
+				print("FAIL seed %d: shopkeeper on shop room perimeter" % seed_value)
+				failures += 1
+			# Nothing else spawns in the shop room; it's never a special room
+			for pos in fd.enemy_spawns:
+				if fd.shop_room.has_point(pos):
+					print("FAIL seed %d: enemy spawned in shop room" % seed_value)
+					failures += 1
+					break
+			for spawn in fd.box_spawns:
+				if fd.shop_room.has_point(spawn["pos"]):
+					print("FAIL seed %d: loot box spawned in shop room" % seed_value)
+					failures += 1
+					break
+			if fd.shop_room == fd.rooms[0] or fd.shop_room == fd.saferoom \
+					or fd.shop_room.has_point(fd.stairs):
+				print("FAIL seed %d: shop room overlaps spawn/saferoom/stairs" % seed_value)
+				failures += 1
 		if bad_placement:
 			print("FAIL seed %d: bad/overlapping/saferoom entity placement" % seed_value)
 			failures += 1

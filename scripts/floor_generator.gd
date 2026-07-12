@@ -10,6 +10,7 @@ class FloorData:
 	var stairs: Vector2i
 	var rooms: Array[Rect2i] = []
 	var saferoom := Rect2i()  # zero-size = no saferoom on this floor
+	var shop_room := Rect2i()  # dedicated shop room — nothing else spawns here
 	var shop_pos := Vector2i(-1, -1)  # shopkeeper location, (-1,-1) = none
 	var enemy_spawns: Array[Vector2i] = []
 	var box_spawns: Array = []  # [{ "tier": int, "pos": Vector2i }]
@@ -89,7 +90,18 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 				if fd.grid.get_tile(Vector2i(rx, ry)) == DungeonGrid.FLOOR:
 					fd.grid.set_tile(Vector2i(rx, ry), DungeonGrid.SAFE)
 
-	# 4c. Neighbourhoods: cluster rooms around 2-4 spread-out seed rooms
+	# 4c. Shop room: a dedicated room (never spawn/stairs/saferoom). Only the
+	# Bopca lives here — he stands at the center, which is never a perimeter
+	# tile (rooms are >= 4 wide), so he can't block a doorway.
+	var shop_candidates: Array[Rect2i] = []
+	for room in fd.rooms:
+		if room != fd.rooms[0] and room != far_room and room != fd.saferoom:
+			shop_candidates.append(room)
+	if not shop_candidates.is_empty():
+		fd.shop_room = shop_candidates[rng.randi_range(0, shop_candidates.size() - 1)]
+		fd.shop_pos = fd.shop_room.get_center()
+
+	# 4d. Neighbourhoods: cluster rooms around 2-4 spread-out seed rooms
 	_build_zones(fd, rng)
 
 	# 5. Enemy + loot box placement on random floor tiles (not room 0, not near spawn)
@@ -107,11 +119,6 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 		if pos != Vector2i(-1, -1):
 			fd.box_spawns.append({ "tier": _roll_box_tier(floor_num, rng), "pos": pos })
 			taken[pos] = true
-
-	# Shopkeeper: separate entity from the saferoom, out on the floor proper
-	fd.shop_pos = _random_floor_tile(fd, rng, taken, 4)
-	if fd.shop_pos != Vector2i(-1, -1):
-		taken[fd.shop_pos] = true
 
 	return fd
 
@@ -175,6 +182,8 @@ static func _random_floor_tile(fd: FloorData, rng: RandomNumberGenerator, taken:
 			continue
 		if fd.grid.get_tile(pos) != DungeonGrid.FLOOR:
 			continue
+		if fd.shop_room.size != Vector2i.ZERO and fd.shop_room.has_point(pos):
+			continue  # the shop room spawns nothing but the Bopca
 		if Vector2(pos).distance_to(Vector2(fd.spawn)) < min_spawn_dist:
 			continue
 		return pos

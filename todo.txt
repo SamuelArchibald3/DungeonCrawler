@@ -27,5 +27,5 @@
 
 ## NEW ##
 
-borough bosses that are stronger but provide better rewards
+[DONE 2026-07-12] borough bosses that are stronger but provide better rewards (guards the stairs room; 8x HP/+4 dmg/10x XP; platinum box + full map reveal + achievement)
 make items have an item level that increases with the floor they are dropped on and gives better stats

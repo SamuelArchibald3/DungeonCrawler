@@ -36,6 +36,27 @@ func _run() -> void:
 	var common := LootGenerator.roll_item(1, ItemData.Rarity.COMMON)
 	check(common.affixes.is_empty(), "common has no affixes")
 
+	# --- Item levels: deeper drops are stronger and pricier ---
+	var shallow := LootGenerator.roll_item(1, ItemData.Rarity.COMMON)
+	var deep := LootGenerator.roll_item(6, ItemData.Rarity.COMMON)
+	check(deep.item_level > shallow.item_level, "deeper floors drop higher item levels (%d > %d)" % [deep.item_level, shallow.item_level])
+	var low_lvl := ItemData.new()
+	low_lvl.base = LootGenerator.get_def(&"rusty_sword")
+	low_lvl.item_level = 1
+	var high_lvl := ItemData.new()
+	high_lvl.base = LootGenerator.get_def(&"rusty_sword")
+	high_lvl.item_level = 7
+	check(high_lvl.get_damage() > low_lvl.get_damage(), "item level raises weapon damage (%d > %d)" % [high_lvl.get_damage(), low_lvl.get_damage()])
+	check(LootGenerator.price_of(high_lvl) > LootGenerator.price_of(low_lvl), "higher item level costs more")
+	check(high_lvl.describe().contains("L7"), "describe shows the item level")
+	var boosted: Array = LootGenerator.open_box(3, 2)
+	var boosted_ok := true
+	for it: ItemData in boosted:
+		if not it.is_consumable() and it.item_level < 4:
+			boosted_ok = false
+	check(boosted_ok, "platinum boxes drop above-floor item levels")
+	check(LootGenerator.make_potion().item_level == 0, "consumables are unleveled")
+
 	# --- Gold boxes skew rarer than bronze (300 samples each) ---
 	var bronze_sum := 0
 	var gold_sum := 0

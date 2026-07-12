@@ -95,7 +95,8 @@ func _ready() -> void:
 		var sword := ItemData.new()
 		sword.base = LootGenerator.get_def(&"rusty_sword")
 		sword.rarity = ItemData.Rarity.RARE
-		LootGenerator._roll_affixes(sword, 2)
+		sword.item_level = 3
+		LootGenerator._roll_affixes(sword)
 		GameState.character.inventory.insert(0, sword)
 		# Jump to floor 3 (race/class suppressed) so the shot shows the spawn saferoom
 		GameState.race_class_done = true

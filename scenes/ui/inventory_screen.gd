@@ -110,13 +110,13 @@ func refresh() -> void:
 	var c: CharacterData = GameState.character
 	_inv_list.clear()
 	for item: ItemData in c.inventory:
-		_inv_list.add_item(item.display_name())
+		_inv_list.add_item(item.display_name() + item.level_tag())
 		_inv_list.set_item_custom_fg_color(_inv_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
 
 	_equip_list.clear()
 	for slot in CharacterData.EQUIP_SLOTS:
 		var item = c.equipment[slot]
-		var text := "%s: %s" % [slot, item.display_name() if item != null else "—"]
+		var text := "%s: %s" % [slot, item.display_name() + item.level_tag() if item != null else "—"]
 		_equip_list.add_item(text)
 		if item != null:
 			_equip_list.set_item_custom_fg_color(_equip_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))

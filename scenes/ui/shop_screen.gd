@@ -115,12 +115,12 @@ func refresh() -> void:
 
 	_stock_list.clear()
 	for item: ItemData in _keeper.stock:
-		_stock_list.add_item("%s  —  %d g" % [item.display_name(), LootGenerator.buy_price(item, _cha())])
+		_stock_list.add_item("%s%s  —  %d g" % [item.display_name(), item.level_tag(), LootGenerator.buy_price(item, _cha())])
 		_stock_list.set_item_custom_fg_color(_stock_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
 
 	_inv_list.clear()
 	for item: ItemData in c.inventory:
-		_inv_list.add_item("%s  —  %d g" % [item.display_name(), LootGenerator.sell_price(item, _cha())])
+		_inv_list.add_item("%s%s  —  %d g" % [item.display_name(), item.level_tag(), LootGenerator.sell_price(item, _cha())])
 		_inv_list.set_item_custom_fg_color(_inv_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
 
 	_detail.clear()

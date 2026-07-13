@@ -29,3 +29,26 @@
 
 [DONE 2026-07-12] borough bosses that are stronger but provide better rewards (guards the stairs room; 8x HP/+4 dmg/10x XP; platinum box + full map reveal + achievement)
 [DONE 2026-07-12] make items have an item level that increases with the floor they are dropped on and gives better stats (ilvl = floor + box-tier bonus; scales damage/defense/trinkets/affixes; shown as [LN])
+
+## BOOK-INSPIRED (books 1-3 only, no later-book material) ##
+
+# High impact, builds on existing systems
+system AI announcer (snarky pop-up notification boxes: level-ups, achievements, deaths, item warnings; hooks into the existing Events bus + message log)
+viewer count + fan boxes (fame rises with kills/bosses/style; follower milestones drop fan boxes with gifts; CHA boosts growth - replaces CHA loot bias)
+stat points on level up (+2 points to allocate per level, book-style character sheet instead of fixed creation stats)
+skills that level with use (repeated actions rank up bonuses: bump-attacks train Smash, dodges train Footwork, walking trains Cardio)
+pet companion (a Donut-style companion who fights alongside you, levels up, and has opinions; found or chosen at creation)
+
+# Medium: new systems, very book-flavored
+spells + mana for INT builds (spellbooks drop from boxes and teach actives: magic missile, fireball; mana bar regens per turn)
+crafting throwable bombs (monsters drop components; combine at saferooms into smoke bombs / dynamite / boom jugs - Anarchist's Cookbook energy)
+cursed and joke items (powerful gear with drawbacks and System warning labels it mocks you for ignoring; unequippable-once-worn curses)
+sponsorships (at follower milestones, sponsors send branded boxes with absurd product flavor text; declining is also content)
+saferoom upgrades (pay gold for cots/showers/hot meals that grant run-long buffs; one premium saferoom per floor)
+
+# Bigger swings
+floor themes per depth (floor 4+ as a transit-tunnel network: station rooms, long straight corridors, line-map styling - Iron Tangle vibes)
+traps (spotted with high DEX/INT, avoidable, and luring enemies into them is a valid crawler strategy)
+crawler leaderboard (fake top-10 with Carl and Princess Donut climbing it; your rank updates on kills/floors; death shows final placement)
+end-of-floor recap episode (descending plays a short announcer-voiced recap: kills, loot, embarrassments, viewer verdict)
+hidden crawler club (a secret club room with gambling on boxes, overpriced drinks with buffs, and a bouncer with standards)

@@ -1,12 +1,22 @@
 extends Node
-## Viewership. The dungeon is a show; you are content. Kills, bosses, and
-## descents grow your audience (CHA multiplies gains — this replaces CHA's
-## old loot-rarity bias). Milestone audiences mail you fan boxes.
+## Viewership. The dungeon is broadcast to an alien audience of billions —
+## you are content. Kills, bosses, and descents grow your numbers (CHA
+## multiplies gains; deeper floors draw bigger audiences; big audiences
+## snowball by word of mouth). Milestone audiences mail you fan boxes.
 
-const MILESTONES := [100, 500, 1000, 5000, 10000, 50000]
-const MILESTONE_TIERS := [0, 1, 2, 2, 3, 3]
+const VIEWER_UNIT := 1_000_000  # gains are expressed in millions
+const WORD_OF_MOUTH := 0.02     # every event also adds 2% of current audience
 
-var viewers := 0
+const MILESTONES := [
+	100_000_000, 500_000_000,                    # getting noticed
+	1_000_000_000, 5_000_000_000, 10_000_000_000, 50_000_000_000,
+	100_000_000_000, 500_000_000_000,            # planetary prime time
+	1_000_000_000_000, 10_000_000_000_000, 100_000_000_000_000,
+	1_000_000_000_000_000,                       # the galaxy tunes in
+]
+const MILESTONE_TIERS := [0, 1, 1, 2, 2, 3, 3, 3, 3, 3, 3, 3]
+
+var viewers: int = 0
 var next_milestone := 0
 
 
@@ -23,7 +33,7 @@ func _ready() -> void:
 
 
 func _on_run_started() -> void:
-	viewers = 3 + randi() % 15  # your mom is watching. maybe.
+	viewers = (3 + randi() % 15) * VIEWER_UNIT  # a few million bored aliens
 	next_milestone = 0
 	Events.viewers_changed.emit(viewers)
 
@@ -35,15 +45,20 @@ func multiplier() -> float:
 	return 1.0 + maxi(GameState.character.get_stat(&"CHA") - 8, 0) * 0.05
 
 
+## base is in millions; deeper floors draw bigger audiences, and a large
+## audience recruits more audience.
 func gain(base: int) -> int:
-	var amount := int(round(base * multiplier()))
+	var amount := int(round(base * VIEWER_UNIT * multiplier() * maxi(GameState.floor_number, 1)))
+	amount += int(viewers * WORD_OF_MOUTH)
 	viewers += amount
 	Events.viewers_changed.emit(viewers)
 	_check_milestones()
-	if viewers >= 1000:
-		Achievements.unlock(&"viewbait")
-	if viewers >= 10000:
-		Achievements.unlock(&"trending")
+	if viewers >= 1_000_000_000:
+		Achievements.unlock(&"billion_club")
+	if viewers >= 1_000_000_000_000:
+		Achievements.unlock(&"trillion_club")
+	if viewers >= 1_000_000_000_000_000:
+		Achievements.unlock(&"quadrillion_club")
 	return amount
 
 
@@ -51,11 +66,25 @@ func _on_enemy_killed(_def_id: StringName, is_boss: bool) -> void:
 	gain(150 if is_boss else 3 + randi() % 4)
 
 
+static func format_viewers(n: int) -> String:
+	if n >= 1_000_000_000_000_000:
+		return "%.1fQ" % (n / 1_000_000_000_000_000.0)
+	elif n >= 1_000_000_000_000:
+		return "%.1fT" % (n / 1_000_000_000_000.0)
+	elif n >= 1_000_000_000:
+		return "%.1fB" % (n / 1_000_000_000.0)
+	elif n >= 1_000_000:
+		return "%.1fM" % (n / 1_000_000.0)
+	elif n >= 1_000:
+		return "%.1fK" % (n / 1_000.0)
+	return str(n)
+
+
 func _check_milestones() -> void:
 	while next_milestone < MILESTONES.size() and viewers >= MILESTONES[next_milestone]:
 		var tier: int = MILESTONE_TIERS[next_milestone]
 		Events.announce.emit("VIEWER MILESTONE",
-			"%d viewers! A fan box has been delivered. Try to look grateful." % MILESTONES[next_milestone])
+			"%s viewers! A fan box has been delivered. Try to look grateful." % format_viewers(MILESTONES[next_milestone]))
 		_deliver_fan_box(tier)
 		next_milestone += 1
 

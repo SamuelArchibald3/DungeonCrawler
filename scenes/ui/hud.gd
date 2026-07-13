@@ -94,7 +94,7 @@ func refresh() -> void:
 			_timer_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	_weapon_label.text = "Weapon: %s" % (c.equipment[&"weapon"].display_name() if c.equipment[&"weapon"] != null else "Fists")
 	_gold_label.text = "Gold: %d" % c.gold
-	_viewers_label.text = "Viewers: %d" % Fame.viewers
+	_viewers_label.text = "Viewers: %s" % Fame.format_viewers(Fame.viewers)
 
 	var quest_line := Quests.status_line()
 	_quest_label.text = quest_line

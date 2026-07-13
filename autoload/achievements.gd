@@ -21,8 +21,9 @@ const DEFS := {
 	&"ceiling_fan": ["Ceiling Appreciator", "Survive being crushed by a collapsing floor."],
 	&"deep_dive": ["Prototype Depths Cleared", "Reach floor 5."],
 	&"participation": ["Participation Award", "Die."],
-	&"viewbait": ["Certified Viewbait", "Reach 1,000 viewers."],
-	&"trending": ["Trending", "Reach 10,000 viewers."],
+	&"billion_club": ["The Billion Club", "Reach 1,000,000,000 viewers."],
+	&"trillion_club": ["Trending Across Forty Systems", "Reach one TRILLION viewers."],
+	&"quadrillion_club": ["Galactic Darling", "Reach one QUADRILLION viewers. The System is genuinely impressed."],
 }
 
 var unlocked := {}  # id -> true, persistent

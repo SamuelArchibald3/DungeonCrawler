@@ -52,8 +52,8 @@ func _ready() -> void:
 func open() -> void:
 	var c: CharacterData = GameState.character
 	_eulogy.text = Flavor.eulogy()
-	var lines := "%s — Level %d\nFloor reached: %d    Kills: %d    Boxes opened: %d    Gold hoarded: %d\nFinal viewership: %d" % [
-		c.char_name, c.level, GameState.floor_number, GameState.kills, GameState.boxes_opened, c.gold, Fame.viewers]
+	var lines := "%s — Level %d\nFloor reached: %d    Kills: %d    Boxes opened: %d    Gold hoarded: %d\nFinal viewership: %s" % [
+		c.char_name, c.level, GameState.floor_number, GameState.kills, GameState.boxes_opened, c.gold, Fame.format_viewers(Fame.viewers)]
 	if GameState.best_item_name != "":
 		lines += "\nBest loot: %s (%s)" % [GameState.best_item_name, ItemData.RARITY_NAMES[GameState.best_item_rarity]]
 	if Achievements.run_unlocks > 0:

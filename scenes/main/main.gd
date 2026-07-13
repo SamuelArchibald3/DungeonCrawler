@@ -208,6 +208,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return  # the screen closes itself
 		if _can_open_modal():
 			dungeon.turn_manager.lock()
+			inventory_screen.allocate_allowed = dungeon.grid.is_safe(dungeon.player.grid_pos)
 			inventory_screen.open()
 	elif event.is_action_pressed("map"):
 		if map_screen.visible:
@@ -282,6 +283,8 @@ func _shot_tick() -> void:
 		46:
 			if is_instance_valid(dungeon):
 				dungeon.turn_manager.lock()
+			GameState.character.unspent_stat_points = 4
+			inventory_screen.allocate_allowed = true
 			inventory_screen.open()
 		50:
 			if inventory_screen._inv_list.item_count > 0:

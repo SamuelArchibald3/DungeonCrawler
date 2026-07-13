@@ -34,7 +34,9 @@ func _ready() -> void:
 
 
 func _on_level_up(level: int) -> void:
-	Events.announce.emit("LEVEL UP", LEVEL_UP_LINES[randi() % LEVEL_UP_LINES.size()] % level)
+	Events.announce.emit("LEVEL UP",
+		LEVEL_UP_LINES[randi() % LEVEL_UP_LINES.size()] % level
+		+ "\n+2 stat points banked. Spend them in a Safe Room.")
 
 
 func _on_floor_changed(floor_number: int) -> void:

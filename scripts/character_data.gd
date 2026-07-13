@@ -14,6 +14,7 @@ var char_class: Resource = null  # ClassDef
 var level := 1
 var xp := 0
 var gold := 0
+var unspent_stat_points := 0  # +2 per level; allocatable only in saferooms
 var hp := 0
 var max_hp := 0
 var inventory: Array = []        # Array[ItemData]
@@ -64,6 +65,7 @@ func gain_xp(amount: int) -> bool:
 	while xp >= xp_to_next():
 		xp -= xp_to_next()
 		level += 1
+		unspent_stat_points += 2
 		leveled = true
 		recompute_max_hp()
 		hp = max_hp  # prototype-generous: full heal on level-up

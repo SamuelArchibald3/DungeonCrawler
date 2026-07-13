@@ -25,6 +25,7 @@ const PAGES := [
 		"Teal tiles are System-certified Safe Rooms™.\n\n" +
 		"• Monsters legally cannot enter. They will absolutely camp the doorway like unpaid interns.\n" +
 		"• You heal a little every turn inside, and the ceiling can't crush you here — even after the floor closes.\n" +
+		"• Level-up stat points can only be allocated in here (open your inventory). Union rules.\n" +
 		"• The timer keeps ticking, though. Safety is not the same as progress. Ask my therapist."],
 	["THE FLOOR 3 REBRAND",
 		"Reach floor 3 and the System offers you a new race and class. In here, thankfully.\n\n" +

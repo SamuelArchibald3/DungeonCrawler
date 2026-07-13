@@ -34,8 +34,8 @@
 
 # High impact, builds on existing systems
 [DONE 2026-07-13] system AI announcer (pop-up notification boxes for level-ups, floors, achievements, deaths, boss kills; SystemAnnouncer autoload + NotificationBox UI)
-[DONE 2026-07-13] viewer count + fan boxes (Fame autoload; gains from kills/bosses/descents/achievements, CHA multiplies gains replacing its loot bias; milestones at 100-50k deliver tiered fan boxes)
-stat points on level up (+2 points to allocate per level, book-style character sheet instead of fixed creation stats)
+[DONE 2026-07-13] viewer count + fan boxes (Fame autoload; gains from kills/bosses/descents/achievements scaled by CHA + floor + word-of-mouth; milestones 100M-1Q deliver tiered fan boxes; B/T/Q achievements)
+[DONE 2026-07-13] stat points on level up (+2 banked per level; allocatable only in saferooms via the inventory character panel; HUD/announcer nag about unspent points)
 skills that level with use (repeated actions rank up bonuses: bump-attacks train Smash, dodges train Footwork, walking trains Cardio)
 pet companion (a Donut-style companion who fights alongside you, levels up, and has opinions; found or chosen at creation)
 

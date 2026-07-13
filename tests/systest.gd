@@ -352,6 +352,24 @@ func _run() -> void:
 	await get_tree().process_frame
 	check(Fame.viewers > viewers_before_level, "level-ups gain viewers")
 
+	# --- Stat points: banked on level up, spendable only in saferooms ---
+	check(c.unspent_stat_points == (c.level - 1) * 2,
+		"level ups bank 2 stat points each (%d pts at level %d)" % [c.unspent_stat_points, c.level])
+	main.inventory_screen.refresh()
+	var str_before: int = c.base_stats[&"STR"]
+	main.inventory_screen.allocate_allowed = false
+	main.inventory_screen._on_stat_plus(&"STR")
+	check(c.base_stats[&"STR"] == str_before, "cannot allocate stat points outside a saferoom")
+	main.inventory_screen.allocate_allowed = true
+	var pts_before: int = c.unspent_stat_points
+	main.inventory_screen._on_stat_plus(&"STR")
+	check(c.base_stats[&"STR"] == str_before + 1, "allocating in a saferoom raises the stat")
+	check(c.unspent_stat_points == pts_before - 1, "allocation spends a point")
+	var hp_before_con: int = c.max_hp
+	main.inventory_screen._on_stat_plus(&"CON")
+	check(c.max_hp > hp_before_con, "CON allocation raises max HP")
+	main.inventory_screen.allocate_allowed = false
+
 	# --- Saferooms: regen, crush immunity, enemies stay out ---
 	var safe_pos := Vector2i(-1, -1)
 	var lurk_pos := Vector2i(-1, -1)

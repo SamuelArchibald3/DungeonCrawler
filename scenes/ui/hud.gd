@@ -78,7 +78,8 @@ func refresh() -> void:
 	_hp_label.text = "HP %d / %d" % [c.hp, c.max_hp]
 	_hp_bar.max_value = c.max_hp
 	_hp_bar.value = c.hp
-	_xp_label.text = "Level %d   XP %d / %d" % [c.level, c.xp, c.xp_to_next()]
+	var points_suffix := "   [+%d pts]" % c.unspent_stat_points if c.unspent_stat_points > 0 else ""
+	_xp_label.text = "Level %d   XP %d / %d%s" % [c.level, c.xp, c.xp_to_next(), points_suffix]
 	_floor_label.text = "Floor %d" % GameState.floor_number
 	var turns: int = GameState.floor_turns_left
 	if turns <= 0:

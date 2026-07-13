@@ -5,10 +5,15 @@ extends Control
 
 signal closed
 
+## Set by main before open(): stat points may only be spent in a saferoom
+var allocate_allowed := false
+
 var _inv_list: ItemList
 var _equip_list: ItemList
 var _detail: RichTextLabel
 var _stats: RichTextLabel
+var _points_label: Label
+var _stat_rows := {}  # StringName -> { "label": Label, "button": Button }
 
 
 func _ready() -> void:
@@ -71,6 +76,20 @@ func _ready() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(right)
 	right.add_child(_make_header("Character"))
+	_points_label = Label.new()
+	_points_label.add_theme_color_override("font_color", Color(0.55, 0.85, 0.55))
+	right.add_child(_points_label)
+	for stat in CharacterData.STAT_NAMES:
+		var row := HBoxContainer.new()
+		right.add_child(row)
+		var stat_label := Label.new()
+		stat_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(stat_label)
+		var plus := Button.new()
+		plus.text = "+"
+		plus.pressed.connect(_on_stat_plus.bind(stat))
+		row.add_child(plus)
+		_stat_rows[stat] = { "label": stat_label, "button": plus }
 	_stats = RichTextLabel.new()
 	_stats.bbcode_enabled = true
 	_stats.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -121,6 +140,16 @@ func refresh() -> void:
 		if item != null:
 			_equip_list.set_item_custom_fg_color(_equip_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
 
+	if c.unspent_stat_points <= 0:
+		_points_label.text = ""
+	elif allocate_allowed:
+		_points_label.text = "Unspent stat points: %d — spend them!" % c.unspent_stat_points
+	else:
+		_points_label.text = "Unspent stat points: %d — allocate in a Safe Room" % c.unspent_stat_points
+	for stat in _stat_rows:
+		_stat_rows[stat]["label"].text = "%s: %d" % [stat, c.get_stat(stat)]
+		_stat_rows[stat]["button"].visible = allocate_allowed and c.unspent_stat_points > 0
+
 	_stats.clear()
 	var lines: Array[String] = []
 	lines.append("[b]%s[/b]" % c.char_name)
@@ -128,15 +157,24 @@ func refresh() -> void:
 		lines.append("%s %s" % [c.race.display_name, c.char_class.display_name if c.char_class != null else ""])
 	lines.append("Level %d   HP %d/%d" % [c.level, c.hp, c.max_hp])
 	lines.append("")
-	for stat in CharacterData.STAT_NAMES:
-		lines.append("%s: %d" % [stat, c.get_stat(stat)])
-	lines.append("")
 	lines.append("Weapon damage: %d" % c.get_weapon_damage())
 	lines.append("Defense: %d" % c.get_defense())
 	for id in c.abilities:
 		lines.append("%s — %s" % [Abilities.display_name(id), Abilities.description(id)])
 	_stats.append_text("\n".join(lines))
 	_detail.clear()
+
+
+func _on_stat_plus(stat: StringName) -> void:
+	var c: CharacterData = GameState.character
+	if not allocate_allowed or c.unspent_stat_points <= 0:
+		return
+	c.base_stats[stat] += 1
+	c.unspent_stat_points -= 1
+	c.recompute_max_hp()
+	Events.msg("%s increased to %d. (%d points left)" % [stat, c.get_stat(stat), c.unspent_stat_points], &"system")
+	refresh()
+	Events.hud_refresh.emit()
 
 
 func _on_inventory_selected(index: int) -> void:

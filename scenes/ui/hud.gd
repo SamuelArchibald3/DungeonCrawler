@@ -10,6 +10,7 @@ var _floor_label: Label
 var _timer_label: Label
 var _weapon_label: Label
 var _gold_label: Label
+var _viewers_label: Label
 var _ability_label: Label
 var _quest_label: Label
 
@@ -48,6 +49,10 @@ func _ready() -> void:
 	_gold_label = Label.new()
 	vbox.add_child(_gold_label)
 
+	_viewers_label = Label.new()
+	_viewers_label.add_theme_color_override("font_color", Color(0.9, 0.6, 0.75))
+	vbox.add_child(_viewers_label)
+
 	_ability_label = Label.new()
 	vbox.add_child(_ability_label)
 
@@ -58,6 +63,7 @@ func _ready() -> void:
 	Events.hud_refresh.connect(refresh)
 	Events.floor_changed.connect(func(_n: int) -> void: refresh())
 	Events.level_up.connect(func(_n: int) -> void: refresh())
+	Events.viewers_changed.connect(func(_n: int) -> void: refresh())
 	refresh()
 
 
@@ -88,6 +94,7 @@ func refresh() -> void:
 			_timer_label.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
 	_weapon_label.text = "Weapon: %s" % (c.equipment[&"weapon"].display_name() if c.equipment[&"weapon"] != null else "Fists")
 	_gold_label.text = "Gold: %d" % c.gold
+	_viewers_label.text = "Viewers: %d" % Fame.viewers
 
 	var quest_line := Quests.status_line()
 	_quest_label.text = quest_line

@@ -33,8 +33,8 @@
 ## BOOK-INSPIRED (books 1-3 only, no later-book material) ##
 
 # High impact, builds on existing systems
-system AI announcer (snarky pop-up notification boxes: level-ups, achievements, deaths, item warnings; hooks into the existing Events bus + message log)
-viewer count + fan boxes (fame rises with kills/bosses/style; follower milestones drop fan boxes with gifts; CHA boosts growth - replaces CHA loot bias)
+[DONE 2026-07-13] system AI announcer (pop-up notification boxes for level-ups, floors, achievements, deaths, boss kills; SystemAnnouncer autoload + NotificationBox UI)
+[DONE 2026-07-13] viewer count + fan boxes (Fame autoload; gains from kills/bosses/descents/achievements, CHA multiplies gains replacing its loot bias; milestones at 100-50k deliver tiered fan boxes)
 stat points on level up (+2 points to allocate per level, book-style character sheet instead of fixed creation stats)
 skills that level with use (repeated actions rank up bonuses: bump-attacks train Smash, dodges train Footwork, walking trains Cardio)
 pet companion (a Donut-style companion who fights alongside you, levels up, and has opinions; found or chosen at creation)

@@ -20,6 +20,11 @@ signal item_sold
 signal descended(turns_remaining: int)
 signal crush_survived
 signal race_class_completed
+signal achievement_unlocked(id: StringName, title: String, description: String)
+
+## The System's voice: pop-up notification boxes (see NotificationBox)
+signal announce(title: String, body: String)
+signal viewers_changed(count: int)
 
 ## Message categories double as log colors: &"combat", &"loot", &"system", &"info"
 

@@ -317,6 +317,35 @@ func _run() -> void:
 	main.achievements_screen.close()
 	check(not main.achievements_screen.visible, "achievements screen closes")
 
+	# --- Fame: viewers, CHA multiplier, milestone fan boxes ---
+	check(Fame.viewers > 0, "run starts with a (pitiful) audience")
+	var viewers_before: int = Fame.viewers
+	Events.enemy_killed.emit(&"rat", false)
+	check(Fame.viewers > viewers_before, "kills attract viewers")
+	var cha_saved: int = c.base_stats[&"CHA"]
+	c.base_stats[&"CHA"] = 8
+	var mult_low: float = Fame.multiplier()
+	c.base_stats[&"CHA"] = 18
+	check(Fame.multiplier() > mult_low, "CHA multiplies viewer gains")
+	c.base_stats[&"CHA"] = cha_saved
+	Fame.viewers = 99
+	Fame.next_milestone = 0
+	var inv_before_fan: int = c.inventory.size()
+	var gold_before_fan: int = c.gold
+	Fame.gain(10)
+	check(Fame.next_milestone >= 1, "viewer milestone crossed at 100")
+	check(c.inventory.size() > inv_before_fan, "fan box delivers items")
+	check(c.gold > gold_before_fan, "fans send gold")
+
+	# --- Announcer: events become notification boxes ---
+	Events.announce.emit("TEST BOX", "Just testing. The System loves tests.")
+	await get_tree().process_frame
+	check(main.notification_box.queue_size() > 0, "notifications queue and display")
+	var viewers_before_level: int = Fame.viewers
+	Events.level_up.emit(99)
+	await get_tree().process_frame
+	check(Fame.viewers > viewers_before_level, "level-ups gain viewers")
+
 	# --- Saferooms: regen, crush immunity, enemies stay out ---
 	var safe_pos := Vector2i(-1, -1)
 	var lurk_pos := Vector2i(-1, -1)

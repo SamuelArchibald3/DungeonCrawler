@@ -12,6 +12,7 @@ var shop_screen: ShopScreen
 var guide_screen: GuideScreen
 var map_screen: MapScreen
 var achievements_screen: AchievementsScreen
+var notification_box: NotificationBox
 var race_class_screen: RaceClassScreen
 var game_over_screen: GameOverScreen
 var char_create_screen: CharCreateScreen
@@ -74,6 +75,10 @@ func _ready() -> void:
 	char_create_screen.confirmed.connect(start_run)
 	char_create_screen.visible = false
 	ui_layer.add_child(char_create_screen)
+
+	# Last child = drawn on top of everything, including modals
+	notification_box = NotificationBox.new()
+	ui_layer.add_child(notification_box)
 
 	Events.player_died.connect(_on_player_died)
 

@@ -35,10 +35,10 @@ func get_def(id: StringName) -> ItemDef:
 	return null
 
 
-## Box tiers raise the rarity distribution; deeper floors and CHA help too.
+## Box tiers raise the rarity distribution; deeper floors help too.
+## (CHA no longer biases loot — it multiplies viewer gains instead; see Fame.)
 func roll_rarity(tier: int, floor_num: int) -> int:
-	var cha: int = GameState.character.get_stat(&"CHA") if GameState.character != null else 8
-	var roll := GameState.rng.randf() + tier * 0.18 + (floor_num - 1) * 0.03 + (cha - 8) * 0.01
+	var roll := GameState.rng.randf() + tier * 0.18 + (floor_num - 1) * 0.03
 	if roll >= 1.05:
 		return ItemData.Rarity.LEGENDARY
 	elif roll >= 0.92:

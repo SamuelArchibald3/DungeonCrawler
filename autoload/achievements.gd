@@ -21,6 +21,8 @@ const DEFS := {
 	&"ceiling_fan": ["Ceiling Appreciator", "Survive being crushed by a collapsing floor."],
 	&"deep_dive": ["Prototype Depths Cleared", "Reach floor 5."],
 	&"participation": ["Participation Award", "Die."],
+	&"viewbait": ["Certified Viewbait", "Reach 1,000 viewers."],
+	&"trending": ["Trending", "Reach 10,000 viewers."],
 }
 
 var unlocked := {}  # id -> true, persistent
@@ -60,6 +62,7 @@ func unlock(id: StringName) -> void:
 	run_unlocks += 1
 	_save()
 	Events.msg("ACHIEVEMENT UNLOCKED: %s — %s" % [DEFS[id][0], DEFS[id][1]], &"system")
+	Events.achievement_unlocked.emit(id, DEFS[id][0], DEFS[id][1])
 
 
 func _on_run_started() -> void:

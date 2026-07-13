@@ -5,6 +5,8 @@ extends RefCounted
 
 static func player_attack_damage(c: CharacterData, enemy: Entity, rng: RandomNumberGenerator) -> int:
 	var dmg := c.get_weapon_damage() + floori((c.get_stat(&"STR") - 8) / 2.0) + rng.randi_range(0, 2)
+	if GameState.amenities.has(&"meal"):
+		dmg += 1  # well fed, mildly lethal
 	if c.has_ability(&"backstab") and enemy.hp == enemy.max_hp:
 		dmg = floori(dmg * 1.5)
 	dmg -= enemy.enemy_def.defense

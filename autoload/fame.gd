@@ -38,11 +38,15 @@ func _on_run_started() -> void:
 	Events.viewers_changed.emit(viewers)
 
 
-## Every point of CHA over 8 adds 5% to viewer gains.
+## Every point of CHA over 8 adds 5% to viewer gains; a hot shower adds 25%
+## (the audience appreciates hygiene).
 func multiplier() -> float:
-	if GameState.character == null:
-		return 1.0
-	return 1.0 + maxi(GameState.character.get_stat(&"CHA") - 8, 0) * 0.05
+	var m := 1.0
+	if GameState.character != null:
+		m += maxi(GameState.character.get_stat(&"CHA") - 8, 0) * 0.05
+	if GameState.amenities.has(&"shower"):
+		m += 0.25
+	return m
 
 
 ## base is in millions; deeper floors draw bigger audiences, and a large

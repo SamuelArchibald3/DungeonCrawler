@@ -15,6 +15,7 @@ var level := 1
 var xp := 0
 var gold := 0
 var unspent_stat_points := 0  # +2 per level; allocatable only in saferooms
+var bonus_max_hp := 0  # flat bonuses (e.g. saferoom cot naps)
 var hp := 0
 var max_hp := 0
 var inventory: Array = []        # Array[ItemData]
@@ -44,7 +45,7 @@ func get_stat(stat: StringName) -> int:
 
 
 func recompute_max_hp() -> void:
-	var new_max := 10 + get_stat(&"CON") * 3 + level * 2
+	var new_max := 10 + get_stat(&"CON") * 3 + level * 2 + bonus_max_hp
 	if race != null:
 		new_max += race.max_hp_mod
 	if char_class != null:

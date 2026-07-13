@@ -352,6 +352,38 @@ func _run() -> void:
 	await get_tree().process_frame
 	check(Fame.viewers > viewers_before_level, "level-ups gain viewers")
 
+	# --- Saferoom amenities: paid run-long buffs at the guide ---
+	check(GameState.amenities.is_empty(), "runs start with no amenities")
+	c.gold = 500
+	var guide_ui = main.guide_screen
+	var hp_before_cot: int = c.max_hp
+	var gold_before_cot: int = c.gold
+	guide_ui._on_amenity_pressed(&"cot")
+	check(c.max_hp == hp_before_cot + 10, "cot nap grants +10 max HP")
+	check(c.gold == gold_before_cot - 25, "cot nap costs 25 gold")
+	var gold_after_cot: int = c.gold
+	guide_ui._on_amenity_pressed(&"cot")
+	check(c.gold == gold_after_cot, "amenities are once per run")
+	var mult_before_shower: float = Fame.multiplier()
+	guide_ui._on_amenity_pressed(&"shower")
+	check(is_equal_approx(Fame.multiplier(), mult_before_shower + 0.25), "shower adds +25% viewer gains")
+	var rat_dummy := Entity.make_enemy(EnemyDef.all()[0], Vector2i(1, 1), 1)
+	var saved_abilities := c.abilities.duplicate()
+	c.abilities.clear()  # passives like backstab would skew the exact-diff check
+	GameState.rng.seed = 12345
+	var dmg_unfed := 0
+	for i in 20:
+		dmg_unfed += Combat.player_attack_damage(c, rat_dummy, GameState.rng)
+	guide_ui._on_amenity_pressed(&"meal")
+	GameState.rng.seed = 12345
+	var dmg_fed := 0
+	for i in 20:
+		dmg_fed += Combat.player_attack_damage(c, rat_dummy, GameState.rng)
+	c.abilities = saved_abilities
+	rat_dummy.free()
+	check(dmg_fed == dmg_unfed + 20, "hot meal adds exactly +1 damage per hit")
+	check(Achievements.is_unlocked(&"self_care"), "buying all amenities unlocks Self Care")
+
 	# --- Stat points: banked on level up, spendable only in saferooms ---
 	check(c.unspent_stat_points == (c.level - 1) * 2,
 		"level ups bank 2 stat points each (%d pts at level %d)" % [c.unspent_stat_points, c.level])

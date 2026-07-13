@@ -21,6 +21,7 @@ const DEFS := {
 	&"ceiling_fan": ["Ceiling Appreciator", "Survive being crushed by a collapsing floor."],
 	&"deep_dive": ["Prototype Depths Cleared", "Reach floor 5."],
 	&"participation": ["Participation Award", "Die."],
+	&"self_care": ["Self Care", "Buy every saferoom amenity in one run."],
 	&"billion_club": ["The Billion Club", "Reach 1,000,000,000 viewers."],
 	&"trillion_club": ["Trending Across Forty Systems", "Reach one TRILLION viewers."],
 	&"quadrillion_club": ["Galactic Darling", "Reach one QUADRILLION viewers. The System is genuinely impressed."],

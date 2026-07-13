@@ -44,7 +44,7 @@ spells + mana for INT builds (spellbooks drop from boxes and teach actives: magi
 crafting throwable bombs (monsters drop components; combine at saferooms into smoke bombs / dynamite / boom jugs - Anarchist's Cookbook energy)
 cursed and joke items (powerful gear with drawbacks and System warning labels it mocks you for ignoring; unequippable-once-worn curses)
 sponsorships (at follower milestones, sponsors send branded boxes with absurd product flavor text; declining is also content)
-saferoom upgrades (pay gold for cots/showers/hot meals that grant run-long buffs; one premium saferoom per floor)
+[DONE 2026-07-13] saferoom upgrades (guide sells cot/shower/meal amenities, once per run, run-long buffs: +10 max HP / +25% viewers / +1 damage; Self Care achievement)
 
 # Bigger swings
 floor themes per depth (floor 4+ as a transit-tunnel network: station rooms, long straight corridors, line-map styling - Iron Tangle vibes)

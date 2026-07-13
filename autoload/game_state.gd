@@ -14,6 +14,9 @@ var run_seed: int = 0
 var floor_turns_left: int = FLOOR_TURN_BUDGET
 var collapse_ticks: int = 0  # turns spent inside a collapsed floor
 
+## Saferoom amenities purchased this run (id -> true); effects last the run
+var amenities := {}
+
 ## Run summary stats
 var kills: int = 0
 var boxes_opened: int = 0
@@ -29,6 +32,7 @@ func new_run(new_character: CharacterData) -> void:
 	boxes_opened = 0
 	best_item_name = ""
 	best_item_rarity = -1
+	amenities = {}
 	run_seed = randi()
 	rng.seed = run_seed
 	print("[GameState] Run seed: %d" % run_seed)

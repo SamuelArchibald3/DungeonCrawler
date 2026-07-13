@@ -26,6 +26,7 @@ const PAGES := [
 		"• Monsters legally cannot enter. They will absolutely camp the doorway like unpaid interns.\n" +
 		"• You heal a little every turn inside, and the ceiling can't crush you here — even after the floor closes.\n" +
 		"• Level-up stat points can only be allocated in here (open your inventory). Union rules.\n" +
+		"• I also sell amenities: naps, showers, hot meals. Buffs last the whole run. Yes, I take gold. No, I don't haggle.\n" +
 		"• The timer keeps ticking, though. Safety is not the same as progress. Ask my therapist."],
 	["THE FLOOR 3 REBRAND",
 		"Reach floor 3 and the System offers you a new race and class. In here, thankfully.\n\n" +
@@ -39,12 +40,19 @@ const PAGES := [
 		"• He buys your junk at insulting prices. He is also the only buyer. Welcome to economics."],
 ]
 
+const AMENITIES := {
+	&"cot": { "name": "Cot Nap", "price": 25, "desc": "+10 max HP for the run" },
+	&"shower": { "name": "Hot Shower", "price": 20, "desc": "+25% viewer gains for the run" },
+	&"meal": { "name": "Hot Meal", "price": 30, "desc": "+1 damage for the run" },
+}
+
 var _page := 0
 var _title: Label
 var _body: RichTextLabel
 var _page_label: Label
 var _quest_label: RichTextLabel
 var _quest_button: Button
+var _amenity_buttons := {}  # id -> Button
 var _dungeon: Dungeon
 
 
@@ -84,6 +92,25 @@ func _ready() -> void:
 	_quest_button.custom_minimum_size = Vector2(150, 0)
 	_quest_button.pressed.connect(_on_quest_button)
 	quest_row.add_child(_quest_button)
+
+	# Amenities panel: the saferoom's paid services
+	var amenity_box := PanelContainer.new()
+	vbox.add_child(amenity_box)
+	var amenity_vbox := VBoxContainer.new()
+	amenity_box.add_child(amenity_vbox)
+	var amenity_header := Label.new()
+	amenity_header.text = "SAFEROOM AMENITIES — buffs last the whole run, no refunds on relaxation"
+	amenity_header.add_theme_color_override("font_color", Color(0.94, 0.75, 0.25))
+	amenity_vbox.add_child(amenity_header)
+	var amenity_row := HBoxContainer.new()
+	amenity_row.add_theme_constant_override("separation", 12)
+	amenity_vbox.add_child(amenity_row)
+	for id: StringName in AMENITIES:
+		var button := Button.new()
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_on_amenity_pressed.bind(id))
+		amenity_row.add_child(button)
+		_amenity_buttons[id] = button
 
 	_title = Label.new()
 	_title.add_theme_font_size_override("font_size", 24)
@@ -128,6 +155,7 @@ func open(dungeon: Dungeon = null) -> void:
 	visible = true
 	_render()
 	_render_quest()
+	_render_amenities()
 
 
 func _render_quest() -> void:
@@ -155,6 +183,43 @@ func _render_quest() -> void:
 			_quest_label.append_text("[color=#909090]No postings. The dungeon economy is resting.[/color]")
 			_quest_button.text = "—"
 			_quest_button.disabled = true
+
+
+func _render_amenities() -> void:
+	var c: CharacterData = GameState.character
+	for id: StringName in AMENITIES:
+		var def: Dictionary = AMENITIES[id]
+		var button: Button = _amenity_buttons[id]
+		if GameState.amenities.has(id):
+			button.text = "%s\nPURCHASED" % def["name"]
+			button.disabled = true
+		else:
+			button.text = "%s — %dg\n%s" % [def["name"], def["price"], def["desc"]]
+			button.disabled = c == null or c.gold < def["price"]
+
+
+func _on_amenity_pressed(id: StringName) -> void:
+	var c: CharacterData = GameState.character
+	var def: Dictionary = AMENITIES[id]
+	if GameState.amenities.has(id) or c.gold < def["price"]:
+		return
+	c.gold -= def["price"]
+	GameState.amenities[id] = true
+	match id:
+		&"cot":
+			c.bonus_max_hp += 10
+			c.recompute_max_hp()
+			c.heal(10)
+			Events.msg("You nap on a System-certified cot. +10 max HP. The pillow judged you.", &"system")
+		&"shower":
+			Events.msg("You take a hot shower. The viewers approve loudly. (+25% viewer gains)", &"system")
+			Fame.gain(20)  # immediate hygiene bump
+		&"meal":
+			Events.msg("You eat something hot with identifiable ingredients. +1 damage. Chef's kiss.", &"system")
+	if GameState.amenities.size() >= AMENITIES.size():
+		Achievements.unlock(&"self_care")
+	Events.hud_refresh.emit()
+	_render_amenities()
 
 
 func _on_quest_button() -> void:

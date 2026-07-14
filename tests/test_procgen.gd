@@ -64,6 +64,19 @@ func _init() -> void:
 				failures += 1
 				break
 
+		# The spawn room must be empty: no enemies or boxes generate inside it
+		var spawn_room: Rect2i = fd.rooms[0]
+		for pos in fd.enemy_spawns:
+			if spawn_room.has_point(pos):
+				print("FAIL seed %d: enemy spawned in the spawn room" % seed_value)
+				failures += 1
+				break
+		for spawn in fd.box_spawns:
+			if spawn_room.has_point(spawn["pos"]):
+				print("FAIL seed %d: loot box spawned in the spawn room" % seed_value)
+				failures += 1
+				break
+
 		var seen := {}
 		var bad_placement := false
 		for pos in fd.enemy_spawns:

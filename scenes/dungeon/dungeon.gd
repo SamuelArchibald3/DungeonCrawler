@@ -195,8 +195,9 @@ func _spawn_bosses(floor_num: int) -> void:
 		var best := Rect2i()
 		for room: Rect2i in rooms:
 			if room == floor_data.saferoom or room == floor_data.shop_room \
+					or room == floor_data.rooms[0] \
 					or room.has_point(floor_data.stairs):
-				continue  # the stairs room belongs to the borough boss
+				continue  # spawn room stays empty; stairs room belongs to the borough boss
 			if room.get_area() > best.get_area():
 				best = room
 		if best.size == Vector2i.ZERO:

@@ -189,6 +189,19 @@ func _run() -> void:
 			all_spawns_zoned = false
 	check(all_spawns_zoned, "every enemy spawn is inside a neighbourhood")
 
+	# Spawn room must be empty: no enemies (incl. bosses), boxes, or shopkeeper
+	var spawn_room: Rect2i = fd.rooms[0]
+	var spawn_room_clear := true
+	for e: Entity in dungeon.enemies:
+		if spawn_room.has_point(e.grid_pos):
+			spawn_room_clear = false
+	if dungeon.shopkeeper != null and spawn_room.has_point(dungeon.shopkeeper.grid_pos):
+		spawn_room_clear = false
+	for box_spawn: Dictionary in fd.box_spawns:
+		if spawn_room.has_point(box_spawn["pos"]):
+			spawn_room_clear = false
+	check(spawn_room_clear, "spawn room is empty of enemies, bosses, boxes, and shops")
+
 	var boss: Entity = null
 	for info: Dictionary in dungeon.zones_runtime:
 		if info["boss"] != null:

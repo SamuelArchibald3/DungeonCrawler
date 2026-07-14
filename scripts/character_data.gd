@@ -37,6 +37,12 @@ func get_stat(stat: StringName) -> int:
 		total += race.stat_mods.get(stat, 0)
 	if char_class != null:
 		total += char_class.stat_mods.get(stat, 0)
+	return total + get_gear_bonus(stat)
+
+
+## The equipment's share of a stat, shown separately in the character sheet.
+func get_gear_bonus(stat: StringName) -> int:
+	var total := 0
 	for slot in equipment:
 		var item = equipment[slot]
 		if item != null:

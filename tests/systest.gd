@@ -415,6 +415,21 @@ func _run() -> void:
 	check(c.max_hp > hp_before_con, "CON allocation raises max HP")
 	main.inventory_screen.allocate_allowed = false
 
+	# --- Character sheet: gear bonuses split out as a green column ---
+	var medal := ItemData.new()
+	medal.base = LootGenerator.get_def(&"participation_medal")  # innate CHA +1
+	c.inventory.append(medal)
+	main.inventory_screen.refresh()
+	main.inventory_screen._on_inventory_activated(c.inventory.size() - 1)  # equip to trinket
+	check(c.get_gear_bonus(&"CHA") >= 1, "gear stat bonus tracked separately from base")
+	check(c.get_stat(&"CHA") == (c.get_stat(&"CHA") - c.get_gear_bonus(&"CHA")) + c.get_gear_bonus(&"CHA"),
+		"base + gear equals total")
+	main.inventory_screen.refresh()
+	var cha_bonus_text: String = main.inventory_screen._stat_rows[&"CHA"]["bonus"].text
+	check(cha_bonus_text.begins_with("+"), "gear bonus renders as +N in its column (%s)" % cha_bonus_text)
+	var cha_total_text: String = main.inventory_screen._stat_rows[&"CHA"]["total"].text
+	check(cha_total_text == str(c.get_stat(&"CHA")), "total column shows the final stat")
+
 	# --- Saferooms: regen, crush immunity, enemies stay out ---
 	var safe_pos := Vector2i(-1, -1)
 	var lurk_pos := Vector2i(-1, -1)

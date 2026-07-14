@@ -79,17 +79,41 @@ func _ready() -> void:
 	_points_label = Label.new()
 	_points_label.add_theme_color_override("font_color", Color(0.55, 0.85, 0.55))
 	right.add_child(_points_label)
+	# Stat table: base (incl. race/class) | green gear bonus | total
+	var header := HBoxContainer.new()
+	right.add_child(header)
+	for col: Array in [["", 48], ["Base", 44], ["Gear", 52], ["Total", 52]]:
+		var h := Label.new()
+		h.text = col[0]
+		h.custom_minimum_size = Vector2(col[1], 0)
+		h.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if col[0] == "" else HORIZONTAL_ALIGNMENT_RIGHT
+		h.add_theme_color_override("font_color", Color(0.6, 0.58, 0.55))
+		header.add_child(h)
 	for stat in CharacterData.STAT_NAMES:
 		var row := HBoxContainer.new()
 		right.add_child(row)
-		var stat_label := Label.new()
-		stat_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(stat_label)
+		var name_label := Label.new()
+		name_label.text = String(stat)
+		name_label.custom_minimum_size = Vector2(48, 0)
+		row.add_child(name_label)
+		var base_label := Label.new()
+		base_label.custom_minimum_size = Vector2(44, 0)
+		base_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(base_label)
+		var bonus_label := Label.new()
+		bonus_label.custom_minimum_size = Vector2(52, 0)
+		bonus_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(bonus_label)
+		var total_label := Label.new()
+		total_label.custom_minimum_size = Vector2(52, 0)
+		total_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		total_label.add_theme_font_size_override("font_size", 17)
+		row.add_child(total_label)
 		var plus := Button.new()
 		plus.text = "+"
 		plus.pressed.connect(_on_stat_plus.bind(stat))
 		row.add_child(plus)
-		_stat_rows[stat] = { "label": stat_label, "button": plus }
+		_stat_rows[stat] = { "base": base_label, "bonus": bonus_label, "total": total_label, "button": plus }
 	_stats = RichTextLabel.new()
 	_stats.bbcode_enabled = true
 	_stats.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -147,7 +171,19 @@ func refresh() -> void:
 	else:
 		_points_label.text = "Unspent stat points: %d — allocate in a Safe Room" % c.unspent_stat_points
 	for stat in _stat_rows:
-		_stat_rows[stat]["label"].text = "%s: %d" % [stat, c.get_stat(stat)]
+		var gear := c.get_gear_bonus(stat)
+		_stat_rows[stat]["base"].text = str(c.get_stat(stat) - gear)
+		var bonus_label: Label = _stat_rows[stat]["bonus"]
+		if gear > 0:
+			bonus_label.text = "+%d" % gear
+			bonus_label.add_theme_color_override("font_color", Color(0.31, 0.76, 0.31))
+		elif gear < 0:
+			bonus_label.text = str(gear)
+			bonus_label.add_theme_color_override("font_color", Color(0.88, 0.31, 0.31))
+		else:
+			bonus_label.text = "—"
+			bonus_label.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4))
+		_stat_rows[stat]["total"].text = str(c.get_stat(stat))
 		_stat_rows[stat]["button"].visible = allocate_allowed and c.unspent_stat_points > 0
 
 	_stats.clear()

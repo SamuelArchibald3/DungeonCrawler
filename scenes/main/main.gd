@@ -103,6 +103,10 @@ func _ready() -> void:
 		sword.item_level = 3
 		LootGenerator._roll_affixes(sword)
 		GameState.character.inventory.insert(0, sword)
+		var foot := ItemData.new()
+		foot.base = LootGenerator.get_def(&"lucky_rabbit_foot")
+		foot.item_level = 4
+		GameState.character.equipment[&"trinket"] = foot
 		# Jump to floor 3 (race/class suppressed) so the shot shows the spawn saferoom
 		GameState.race_class_done = true
 		GameState.floor_number = 3

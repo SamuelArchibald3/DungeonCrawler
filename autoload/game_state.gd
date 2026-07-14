@@ -17,6 +17,10 @@ var collapse_ticks: int = 0  # turns spent inside a collapsed floor
 ## Saferoom amenities purchased this run (id -> true); effects last the run
 var amenities := {}
 
+## Pacing: true = ticked real-time (world acts every tick), false = classic
+## turn-based (world waits for you). Toggled with T.
+var realtime_mode := true
+
 ## Run summary stats
 var kills: int = 0
 var boxes_opened: int = 0

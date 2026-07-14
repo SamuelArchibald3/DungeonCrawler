@@ -5,13 +5,94 @@ extends Node
 
 enum State { AWAITING_INPUT, RESOLVING, LOCKED }
 
+## Ticked real-time pacing (GameState.realtime_mode): the world resolves a
+## "turn" every WORLD_TICK_SECONDS whether or not the player acts, and the
+## player may act once per PLAYER_ACTION_SECONDS via held keys.
+const WORLD_TICK_SECONDS := 0.45
+const PLAYER_ACTION_SECONDS := 0.42
+
+const DIRECTION_ACTIONS := {
+	"move_up": Vector2i.UP,
+	"move_down": Vector2i.DOWN,
+	"move_left": Vector2i.LEFT,
+	"move_right": Vector2i.RIGHT,
+}
+
 var state := State.AWAITING_INPUT
 var dungeon: Dungeon
 var saferoom_announced := false
 var _collapse_safe_notified := false
+var _player_cooldown := 0.0
+var _world_accum := 0.0
+
+
+## Real-time pacing: player acts on held keys with a cooldown; the world
+## ticks on its own clock. Combat/resolution logic is shared with the
+## turn-based path — only the scheduling differs.
+func _process(delta: float) -> void:
+	if not GameState.realtime_mode:
+		return
+	if state != State.AWAITING_INPUT:
+		return  # modals, death, and descent pause the world
+
+	_player_cooldown = maxf(_player_cooldown - delta, 0.0)
+	if _player_cooldown <= 0.0:
+		var dir := _held_direction()
+		if dir != Vector2i.ZERO:
+			_realtime_player_action(dir)
+		elif Input.is_action_just_pressed("ability"):
+			_realtime_ability()
+
+	_world_accum += delta
+	if _world_accum >= WORLD_TICK_SECONDS:
+		_world_accum -= WORLD_TICK_SECONDS
+		state = State.RESOLVING
+		_resolve_enemies()
+		if state == State.RESOLVING:
+			_post_turn()
+		if state == State.RESOLVING:
+			state = State.AWAITING_INPUT
+
+
+func _held_direction() -> Vector2i:
+	for action: String in DIRECTION_ACTIONS:
+		if Input.is_action_pressed(action):
+			return DIRECTION_ACTIONS[action]
+	return Vector2i.ZERO
+
+
+func _realtime_player_action(dir: Vector2i) -> void:
+	state = State.RESOLVING
+	var acted := _resolve_player(dir)
+	if acted:
+		_player_cooldown = PLAYER_ACTION_SECONDS
+		Events.hud_refresh.emit()
+	if state == State.RESOLVING:
+		state = State.AWAITING_INPUT
+
+
+func _realtime_ability() -> void:
+	var c: CharacterData = GameState.character
+	var active := Abilities.first_active(c)
+	if active == &"":
+		Events.msg("No active ability. Try surviving to floor 3 first.", &"system")
+		return
+	if c.ability_cooldowns.get(active, 0) > 0:
+		Events.msg("%s is on cooldown (%d ticks)." % [Abilities.display_name(active), c.ability_cooldowns[active]], &"system")
+		return
+	state = State.RESOLVING
+	var used: bool = Abilities.use_active(active, dungeon)
+	if used:
+		c.ability_cooldowns[active] = Abilities.cooldown(active)
+		_player_cooldown = PLAYER_ACTION_SECONDS
+		Events.hud_refresh.emit()
+	if state == State.RESOLVING:
+		state = State.AWAITING_INPUT
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if GameState.realtime_mode:
+		return  # real-time input is polled in _process
 	if state != State.AWAITING_INPUT:
 		return
 	if event.is_action_pressed("move_up", true):

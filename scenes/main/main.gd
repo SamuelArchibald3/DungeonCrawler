@@ -83,9 +83,11 @@ func _ready() -> void:
 	Events.player_died.connect(_on_player_died)
 
 	if _autorun:
+		GameState.realtime_mode = false  # chaos test drives discrete turns
 		_autorun_rng.randomize()
 		start_run(CharGenerator.random_character())
 	elif OS.get_cmdline_user_args().has("--screenshots"):
+		GameState.realtime_mode = false
 		_shot_mode = true
 		start_run(CharGenerator.random_character())
 		# Some sample loot so the inventory screenshot isn't empty
@@ -112,6 +114,7 @@ func _ready() -> void:
 		GameState.floor_number = 3
 		_load_floor()
 	elif OS.get_cmdline_user_args().has("--systest"):
+		GameState.realtime_mode = false  # deterministic; realtime tested explicitly
 		start_run(CharGenerator.random_character())
 		add_child(load("res://tests/systest.gd").new())
 	else:
@@ -226,6 +229,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		if _can_open_modal():
 			dungeon.turn_manager.lock()
 			achievements_screen.open()
+	elif event.is_action_pressed("toggle_pace"):
+		GameState.realtime_mode = not GameState.realtime_mode
+		var mode_name := "REAL-TIME" if GameState.realtime_mode else "TURN-BASED"
+		Events.msg("Pacing switched to %s." % mode_name, &"system")
+		Events.announce.emit("PACING: %s" % mode_name,
+			"The System accommodates your tempo preferences. Reluctantly.")
 
 
 func _can_open_modal() -> bool:

@@ -18,10 +18,15 @@ godot --path .
 
 ## Controls
 
+Combat runs in **ticked real-time** by default: the world acts every ~0.45s
+whether you move or not, and holding a direction auto-moves on your own
+cooldown. Press **T** anytime to switch to classic turn-based pacing.
+
 | Key | Action |
 |---|---|
 | WASD / Arrows | Move (bump into enemies to attack, boxes to open) |
-| Space / . | Wait a turn |
+| Space / . | Wait a turn (turn-based mode) |
+| T | Toggle real-time / turn-based pacing |
 | Q | Use active ability (granted at the level-3 race/class event) |
 | I / Tab | Inventory & equipment (double-click to equip/use/unequip) |
 | M | Floor map (fog of war; kill a neighbourhood boss to reveal its district) |

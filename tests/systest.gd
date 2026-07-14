@@ -533,6 +533,58 @@ func _run() -> void:
 	check(GameState.collapse_ticks == 0, "descending resets collapse state")
 	c.hp = c.max_hp
 
+	# --- Ticked real-time mode: world acts without input, player rate-limited ---
+	var tm: TurnManager = dungeon.turn_manager
+	GameState.realtime_mode = true
+	tm.set_process(false)  # engine frames stay out; we drive ticks manually
+	tm.state = TurnManager.State.AWAITING_INPUT
+	GameState.floor_turns_left = 200
+	c.hp = c.max_hp
+	var rt_adj := Vector2i(-1, -1)
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var p: Vector2i = dungeon.player.grid_pos + dir
+		if dungeon.grid.is_open(p) and not dungeon.grid.is_safe(p) \
+				and dungeon.grid.get_tile(p) == DungeonGrid.FLOOR:
+			rt_adj = p
+			break
+	check(rt_adj != Vector2i(-1, -1), "open tile beside player for realtime test")
+	if rt_adj != Vector2i(-1, -1):
+		var rt_rat := Entity.make_enemy(EnemyDef.all()[0], rt_adj, 1)
+		dungeon.add_child(rt_rat)
+		dungeon.grid.place_entity(rt_rat, rt_adj)
+		dungeon.enemies.append(rt_rat)
+		var hp_before_rt: int = c.hp
+		for i in 6:
+			tm._process(0.5)  # each call spans at least one world tick
+		check(c.hp < hp_before_rt, "enemies act on world ticks without player input")
+		check(GameState.floor_turns_left < 200, "floor timer runs on world ticks")
+		# Player movement: held key acts immediately, then rate-limited
+		var move_dir := Vector2i.ZERO
+		var move_action := ""
+		for action: String in TurnManager.DIRECTION_ACTIONS:
+			var dir: Vector2i = TurnManager.DIRECTION_ACTIONS[action]
+			var p: Vector2i = dungeon.player.grid_pos + dir
+			if dungeon.grid.is_open(p):
+				move_dir = dir
+				move_action = action
+				break
+		if move_action != "":
+			var start_pos: Vector2i = dungeon.player.grid_pos
+			Input.action_press(move_action)
+			tm._process(0.01)
+			check(dungeon.player.grid_pos == start_pos + move_dir, "held key moves the player in realtime")
+			var after_first: Vector2i = dungeon.player.grid_pos
+			tm._process(0.05)
+			check(dungeon.player.grid_pos == after_first, "player action cooldown limits move rate")
+			Input.action_release(move_action)
+		if is_instance_valid(rt_rat):
+			dungeon.grid.remove_entity(rt_rat.grid_pos)
+			dungeon.enemies.erase(rt_rat)
+			rt_rat.queue_free()
+	GameState.realtime_mode = false
+	tm.set_process(true)
+	c.hp = c.max_hp
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

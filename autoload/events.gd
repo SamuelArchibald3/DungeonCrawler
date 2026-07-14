@@ -51,6 +51,7 @@ func _register_inputs() -> void:
 		"ability": [KEY_Q],
 		"map": [KEY_M],
 		"achievements": [KEY_V],
+		"toggle_pace": [KEY_T],
 	}
 	for action: String in actions:
 		if not InputMap.has_action(action):

@@ -8,7 +8,7 @@ signal closed
 ## Set by main before open(): stat points may only be spent in a saferoom
 var allocate_allowed := false
 
-var _inv_list: ItemList
+var _inv_list: ItemTree
 var _equip_list: ItemList
 var _detail: RichTextLabel
 var _stats: RichTextLabel
@@ -48,11 +48,11 @@ func _ready() -> void:
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(left)
-	left.add_child(_make_header("Inventory (double-click to equip/use)"))
-	_inv_list = ItemList.new()
+	left.add_child(_make_header("Inventory (double-click to equip/use, click headers to sort)"))
+	_inv_list = ItemTree.new()
 	_inv_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_inv_list.item_activated.connect(_on_inventory_activated)
-	_inv_list.item_selected.connect(_on_inventory_selected)
+	_inv_list.item_row_activated.connect(_on_inventory_activated)
+	_inv_list.item_row_selected.connect(_on_inventory_selected)
 	left.add_child(_inv_list)
 
 	# Middle: equipment
@@ -151,10 +151,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func refresh() -> void:
 	var c: CharacterData = GameState.character
-	_inv_list.clear()
-	for item: ItemData in c.inventory:
-		_inv_list.add_item(item.display_name() + item.level_tag())
-		_inv_list.set_item_custom_fg_color(_inv_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
+	_inv_list.set_items(c.inventory)
 
 	_equip_list.clear()
 	for slot in CharacterData.EQUIP_SLOTS:

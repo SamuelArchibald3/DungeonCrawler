@@ -291,8 +291,7 @@ func _shot_tick() -> void:
 			inventory_screen.allocate_allowed = true
 			inventory_screen.open()
 		50:
-			if inventory_screen._inv_list.item_count > 0:
-				inventory_screen._inv_list.select(0)
+			if GameState.character.inventory.size() > 0:
 				inventory_screen._on_inventory_selected(0)
 		60:
 			_capture("inventory")
@@ -300,7 +299,6 @@ func _shot_tick() -> void:
 			inventory_screen.close()
 			if is_instance_valid(dungeon) and dungeon.shopkeeper != null:
 				shop_screen.open_for(dungeon.shopkeeper)
-				shop_screen._stock_list.select(0)
 				shop_screen._on_stock_selected(0)
 		70:
 			_capture("shop")

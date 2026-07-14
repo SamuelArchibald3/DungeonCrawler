@@ -76,6 +76,11 @@ func level_tag() -> String:
 	return " [L%d]" % item_level if item_level > 0 else ""
 
 
+## Type column text: "consumable" or "equip: <slot>".
+func type_label() -> String:
+	return "consumable" if is_consumable() else "equip: %s" % base.slot
+
+
 ## Multi-line tooltip/detail text.
 func describe() -> String:
 	var lines: Array[String] = []

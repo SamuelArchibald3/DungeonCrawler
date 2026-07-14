@@ -6,8 +6,8 @@ extends Control
 signal closed
 
 var _keeper: Shopkeeper
-var _stock_list: ItemList
-var _inv_list: ItemList
+var _stock_list: ItemTree
+var _inv_list: ItemTree
 var _detail: RichTextLabel
 var _gold_label: Label
 
@@ -48,11 +48,11 @@ func _ready() -> void:
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(left)
-	left.add_child(_make_header("For sale (double-click to buy)"))
-	_stock_list = ItemList.new()
+	left.add_child(_make_header("For sale (double-click to buy, click headers to sort)"))
+	_stock_list = ItemTree.new()
 	_stock_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_stock_list.item_activated.connect(_on_stock_activated)
-	_stock_list.item_selected.connect(_on_stock_selected)
+	_stock_list.item_row_activated.connect(_on_stock_activated)
+	_stock_list.item_row_selected.connect(_on_stock_selected)
 	left.add_child(_stock_list)
 
 	var mid := VBoxContainer.new()
@@ -67,11 +67,11 @@ func _ready() -> void:
 	var right := VBoxContainer.new()
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hbox.add_child(right)
-	right.add_child(_make_header("Your stuff (double-click to sell)"))
-	_inv_list = ItemList.new()
+	right.add_child(_make_header("Your stuff (double-click to sell, click headers to sort)"))
+	_inv_list = ItemTree.new()
 	_inv_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_inv_list.item_activated.connect(_on_inv_activated)
-	_inv_list.item_selected.connect(_on_inv_selected)
+	_inv_list.item_row_activated.connect(_on_inv_activated)
+	_inv_list.item_row_selected.connect(_on_inv_selected)
 	right.add_child(_inv_list)
 
 	var hint := Label.new()
@@ -113,15 +113,10 @@ func refresh() -> void:
 	var c: CharacterData = GameState.character
 	_gold_label.text = "Your gold: %d      (CHA %d adjusts prices — charm is currency)" % [c.gold, _cha()]
 
-	_stock_list.clear()
-	for item: ItemData in _keeper.stock:
-		_stock_list.add_item("%s%s  —  %d g" % [item.display_name(), item.level_tag(), LootGenerator.buy_price(item, _cha())])
-		_stock_list.set_item_custom_fg_color(_stock_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
-
-	_inv_list.clear()
-	for item: ItemData in c.inventory:
-		_inv_list.add_item("%s%s  —  %d g" % [item.display_name(), item.level_tag(), LootGenerator.sell_price(item, _cha())])
-		_inv_list.set_item_custom_fg_color(_inv_list.item_count - 1, Color(ItemData.RARITY_COLORS[item.rarity]))
+	_stock_list.set_items(_keeper.stock,
+		func(item: ItemData) -> int: return LootGenerator.buy_price(item, _cha()))
+	_inv_list.set_items(c.inventory,
+		func(item: ItemData) -> int: return LootGenerator.sell_price(item, _cha()))
 
 	_detail.clear()
 

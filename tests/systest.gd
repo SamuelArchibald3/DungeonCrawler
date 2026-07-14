@@ -430,6 +430,42 @@ func _run() -> void:
 	var cha_total_text: String = main.inventory_screen._stat_rows[&"CHA"]["total"].text
 	check(cha_total_text == str(c.get_stat(&"CHA")), "total column shows the final stat")
 
+	# --- Item type column and sortable lists ---
+	check(LootGenerator.make_potion().type_label() == "consumable", "potions typed as consumable")
+	var typed_sword := ItemData.new()
+	typed_sword.base = LootGenerator.get_def(&"rusty_sword")
+	check(typed_sword.type_label() == "equip: weapon", "gear typed with its slot")
+	var saved_inventory: Array = c.inventory
+	var typed_helm := ItemData.new()
+	typed_helm.base = LootGenerator.get_def(&"pot_helm")
+	c.inventory = [LootGenerator.make_potion(), typed_helm, typed_sword]
+	main.inventory_screen.refresh()
+	var inv_tree: ItemTree = main.inventory_screen._inv_list
+	inv_tree._on_title_clicked(1, MOUSE_BUTTON_LEFT)  # sort by Type
+	var first_row := inv_tree.get_root().get_first_child()
+	check(first_row.get_text(1) == "equip: weapon", "type sort lists weapons first (%s)" % first_row.get_text(1))
+	var last_row := first_row
+	while last_row.get_next() != null:
+		last_row = last_row.get_next()
+	check(last_row.get_text(1) == "consumable", "type sort lists consumables last")
+	check(c.inventory[first_row.get_metadata(0)] == typed_sword, "sorted rows still map to source items")
+	c.inventory = saved_inventory
+	main.inventory_screen.refresh()
+
+	# Price sorting in the shop
+	if dungeon.shopkeeper != null:
+		main.shop_screen.open_for(dungeon.shopkeeper)
+		var stock_tree: ItemTree = main.shop_screen._stock_list
+		stock_tree._on_title_clicked(2, MOUSE_BUTTON_LEFT)  # sort by Price ascending
+		var cheap_row := stock_tree.get_root().get_first_child()
+		var dear_row := cheap_row
+		while dear_row.get_next() != null:
+			dear_row = dear_row.get_next()
+		var cheap: int = LootGenerator.buy_price(dungeon.shopkeeper.stock[cheap_row.get_metadata(0)], c.get_stat(&"CHA"))
+		var dear: int = LootGenerator.buy_price(dungeon.shopkeeper.stock[dear_row.get_metadata(0)], c.get_stat(&"CHA"))
+		check(cheap <= dear, "price sort orders cheapest first (%d <= %d)" % [cheap, dear])
+		main.shop_screen.close()
+
 	# --- Saferooms: regen, crush immunity, enemies stay out ---
 	var safe_pos := Vector2i(-1, -1)
 	var lurk_pos := Vector2i(-1, -1)

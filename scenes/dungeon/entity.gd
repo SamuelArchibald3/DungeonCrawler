@@ -29,11 +29,15 @@ var is_borough := false
 var boss_name := ""
 var zone_index := -1
 var glyph_size := 13
+var telegraphs_attacks := false
+var winding_up := false
+var windup_target := Vector2i.ZERO
 
 var _label: Label
 var _tween: Tween
 var _bar_bg: ColorRect
 var _bar_fill: ColorRect
+var _telegraph_mark: Label
 
 
 static func make(glyph_: String, color_: Color, pos: Vector2i) -> Entity:
@@ -48,6 +52,7 @@ static func make(glyph_: String, color_: Color, pos: Vector2i) -> Entity:
 static func make_enemy(def: EnemyDef, pos: Vector2i, floor_num: int) -> Entity:
 	var e := make(def.glyph, def.color, pos)
 	e.enemy_def = def
+	e.telegraphs_attacks = def.telegraphs
 	# Per-floor scaling beyond the enemy's first floor: tougher and worth more
 	e.max_hp = def.max_hp + (floor_num - def.min_floor) * 3
 	e.hp = e.max_hp
@@ -59,6 +64,7 @@ static func make_enemy(def: EnemyDef, pos: Vector2i, floor_num: int) -> Entity:
 static func make_boss(def: EnemyDef, pos: Vector2i, floor_num: int, name_: String, zone: int) -> Entity:
 	var e := make_enemy(def, pos, floor_num)
 	e.is_boss = true
+	e.telegraphs_attacks = true  # boss hits are always big enough to see coming
 	e.boss_name = name_
 	e.zone_index = zone
 	e.max_hp *= 4
@@ -154,6 +160,23 @@ func _update_health_bar() -> void:
 	var fraction := clampf(float(hp) / maxf(float(max_hp), 1.0), 0.0, 1.0)
 	_bar_fill.size.x = (TILE - 2) * fraction
 	_bar_fill.color = Color(0.9, 0.2, 0.15).lerp(Color(0.25, 0.8, 0.25), fraction)
+
+
+## Windup warning: "!" over the glyph and a hot flash while telegraphing.
+func set_telegraphing(active: bool) -> void:
+	if active and _telegraph_mark == null:
+		_telegraph_mark = Label.new()
+		_telegraph_mark.text = "!"
+		_telegraph_mark.position = Vector2(TILE - 6, -10)
+		_telegraph_mark.add_theme_font_size_override("font_size", 13)
+		_telegraph_mark.add_theme_color_override("font_color", Color(1, 0.85, 0.2))
+		_telegraph_mark.add_theme_constant_override("outline_size", 3)
+		_telegraph_mark.add_theme_color_override("font_outline_color", Color(0.5, 0.1, 0.05))
+		add_child(_telegraph_mark)
+	if _telegraph_mark != null:
+		_telegraph_mark.visible = active
+	if _label != null:
+		_label.add_theme_color_override("font_color", Color(1, 0.95, 0.55) if active else color)
 
 
 func health_bar_visible() -> bool:

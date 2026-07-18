@@ -99,7 +99,7 @@ func _run() -> void:
 
 	# --- Enemy scaling: deeper floors mean tougher, more rewarding enemies ---
 	var all_defs := EnemyDef.all()
-	check(all_defs.size() == 5, "5 enemy defs exist (%d)" % all_defs.size())
+	check(all_defs.size() == 6, "6 enemy defs exist (%d)" % all_defs.size())
 	var rat_floor3 := Entity.make_enemy(all_defs[0], Vector2i(1, 1), 3)
 	check(rat_floor3.max_hp > all_defs[0].max_hp, "floor-3 rat has scaled HP")
 	check(rat_floor3.xp_value > all_defs[0].xp, "floor-3 rat grants scaled XP")
@@ -598,6 +598,106 @@ func _run() -> void:
 	check(low_hp_color.r > half_hp_color.r and low_hp_color.g < half_hp_color.g,
 		"health bar shifts from green toward red as HP drops")
 	bar_rat.queue_free()
+
+	# --- Line of sight: clear corridors pass, walls block ---
+	var los_grid := DungeonGrid.new(5, 3)
+	for x in 5:
+		los_grid.set_tile(Vector2i(x, 1), DungeonGrid.FLOOR)
+	check(los_grid.has_line_of_sight(Vector2i(0, 1), Vector2i(4, 1)), "clear corridor has line of sight")
+	los_grid.set_tile(Vector2i(2, 1), DungeonGrid.WALL)
+	check(not los_grid.has_line_of_sight(Vector2i(0, 1), Vector2i(4, 1)), "walls block line of sight")
+
+	# --- Telegraphs: heavies wind up, strikes miss if you move ---
+	var dex_saved: int = c.base_stats[&"DEX"]
+	c.base_stats[&"DEX"] = 0  # no dodges skewing the checks
+	var brute_def: EnemyDef = null
+	for d: EnemyDef in EnemyDef.all():
+		if d.id == &"skeleton_brute":
+			brute_def = d
+	check(brute_def != null and brute_def.telegraphs, "skeleton brute telegraphs its hits")
+	brute_def.move_every_n_turns = 1  # local instance: act every call for the test
+	var tel_adj := Vector2i(-1, -1)
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var p: Vector2i = dungeon.player.grid_pos + dir
+		if dungeon.grid.is_open(p) and not dungeon.grid.is_safe(p):
+			tel_adj = p
+			break
+	check(tel_adj != Vector2i(-1, -1), "open tile beside player for telegraph test")
+	if tel_adj != Vector2i(-1, -1):
+		var brute := Entity.make_enemy(brute_def, tel_adj, 1)
+		dungeon.add_child(brute)
+		dungeon.grid.place_entity(brute, tel_adj)
+		c.hp = c.max_hp
+		EnemyAI.act(brute, dungeon)
+		check(brute.winding_up and c.hp == c.max_hp, "heavy attack winds up instead of hitting")
+		EnemyAI.act(brute, dungeon)
+		check(c.hp < c.max_hp, "telegraphed strike lands if you stand still")
+		check(not brute.winding_up, "windup clears after striking")
+		c.hp = c.max_hp
+		EnemyAI.act(brute, dungeon)
+		check(brute.winding_up, "brute winds up again")
+		var dodge_spot := Vector2i(-1, -1)
+		for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+			var p: Vector2i = dungeon.player.grid_pos + dir
+			if p != brute.grid_pos and dungeon.grid.is_open(p):
+				dodge_spot = p
+				break
+		if dodge_spot != Vector2i(-1, -1):
+			var pre_dodge_pos: Vector2i = dungeon.player.grid_pos
+			dungeon.grid.move_entity(dungeon.player, pre_dodge_pos, dodge_spot)
+			dungeon.player.set_grid_pos(dodge_spot, false)
+			EnemyAI.act(brute, dungeon)
+			check(c.hp == c.max_hp, "telegraphed strike misses if you move")
+			dungeon.grid.move_entity(dungeon.player, dodge_spot, pre_dodge_pos)
+			dungeon.player.set_grid_pos(pre_dodge_pos, false)
+		dungeon.grid.remove_entity(brute.grid_pos)
+		brute.queue_free()
+
+	# --- Ranged enemy: spits from distance, flees when crowded ---
+	var spitter_def: EnemyDef = null
+	for d: EnemyDef in EnemyDef.all():
+		if d.id == &"goblin_spitter":
+			spitter_def = d
+	check(spitter_def != null and spitter_def.ranged, "goblin spitter is a ranged enemy")
+	var range_row := Vector2i(-1, -1)
+	for room: Rect2i in fd.rooms:
+		if room == fd.saferoom or room == fd.shop_room:
+			continue
+		for ry in range(room.position.y, room.end.y):
+			var all_open := true
+			for rx in range(room.position.x, room.position.x + 4):
+				if not dungeon.grid.is_open(Vector2i(rx, ry)):
+					all_open = false
+					break
+			if all_open and room.size.x >= 4:
+				range_row = Vector2i(room.position.x, ry)
+				break
+		if range_row != Vector2i(-1, -1):
+			break
+	check(range_row != Vector2i(-1, -1), "found an open row for the ranged test")
+	if range_row != Vector2i(-1, -1):
+		var player_home: Vector2i = dungeon.player.grid_pos
+		dungeon.grid.move_entity(dungeon.player, player_home, range_row)
+		dungeon.player.set_grid_pos(range_row, false)
+		var spit_pos := range_row + Vector2i(3, 0)
+		var spitter := Entity.make_enemy(spitter_def, spit_pos, 2)
+		dungeon.add_child(spitter)
+		dungeon.grid.place_entity(spitter, spit_pos)
+		c.hp = c.max_hp
+		EnemyAI.act(spitter, dungeon)
+		check(c.hp < c.max_hp, "spitter hits from 3 tiles away")
+		var crowd_pos := range_row + Vector2i(1, 0)
+		dungeon.grid.move_entity(spitter, spitter.grid_pos, crowd_pos)
+		spitter.set_grid_pos(crowd_pos, false)
+		EnemyAI.act(spitter, dungeon)
+		var flee_dist := maxi(absi(spitter.grid_pos.x - range_row.x), absi(spitter.grid_pos.y - range_row.y))
+		check(flee_dist > 1, "crowded spitter retreats (dist %d)" % flee_dist)
+		dungeon.grid.remove_entity(spitter.grid_pos)
+		spitter.queue_free()
+		dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, player_home)
+		dungeon.player.set_grid_pos(player_home, false)
+	c.base_stats[&"DEX"] = dex_saved
+	c.hp = c.max_hp
 
 	# --- Death path shows game over ---
 	c.hp = 0

@@ -43,6 +43,29 @@ func is_open(p: Vector2i) -> bool:
 	return is_walkable(p) and not occupancy.has(p)
 
 
+## Bresenham line: true when no WALL sits between the endpoints (exclusive).
+func has_line_of_sight(from: Vector2i, to: Vector2i) -> bool:
+	var dx := absi(to.x - from.x)
+	var dy := -absi(to.y - from.y)
+	var sx := 1 if from.x < to.x else -1
+	var sy := 1 if from.y < to.y else -1
+	var err := dx + dy
+	var p := from
+	while true:
+		if p != from and p != to and get_tile(p) == WALL:
+			return false
+		if p == to:
+			break
+		var e2 := 2 * err
+		if e2 >= dy:
+			err += dy
+			p.x += sx
+		if e2 <= dx:
+			err += dx
+			p.y += sy
+	return true
+
+
 func entity_at(p: Vector2i) -> Object:
 	var e: Object = occupancy.get(p)
 	# Self-heal: an entity freed without deregistering must never crash queries

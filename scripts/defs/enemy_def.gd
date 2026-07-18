@@ -15,6 +15,9 @@ var move_every_n_turns: int = 1
 var aggro_range: int = 8
 var drop_chance: float = 0.0
 var min_floor: int = 1
+var telegraphs := false  # heavy hitters wind up one action before striking
+var ranged := false      # attacks from distance along line of sight
+var attack_range: int = 4
 
 
 static func make(d: Dictionary) -> EnemyDef:
@@ -46,7 +49,14 @@ static func all() -> Array[EnemyDef]:
 			"color": Color(0.85, 0.85, 0.8),
 			"max_hp": 22, "attack": 6, "defense": 2, "xp": 12,
 			"move_every_n_turns": 2, "aggro_range": 5, "drop_chance": 0.35,
-			"min_floor": 2,
+			"min_floor": 2, "telegraphs": true,
+		},
+		{
+			"id": &"goblin_spitter", "display_name": "Goblin Spitter", "glyph": "s",
+			"color": Color(0.65, 0.9, 0.3),
+			"max_hp": 9, "attack": 3, "defense": 0, "xp": 8,
+			"move_every_n_turns": 1, "aggro_range": 9, "drop_chance": 0.2,
+			"min_floor": 2, "ranged": true, "attack_range": 4,
 		},
 		{
 			"id": &"hobgoblin", "display_name": "Hobgoblin Enforcer", "glyph": "H",
@@ -60,7 +70,7 @@ static func all() -> Array[EnemyDef]:
 			"color": Color(0.6, 0.35, 0.75),
 			"max_hp": 32, "attack": 8, "defense": 3, "xp": 18,
 			"move_every_n_turns": 1, "aggro_range": 6, "drop_chance": 0.45,
-			"min_floor": 4,
+			"min_floor": 4, "telegraphs": true,
 		},
 	]:
 		defs.append(make(d))

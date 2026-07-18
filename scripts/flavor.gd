@@ -52,6 +52,7 @@ const ZONE_NAMES := {
 	&"rat": ["The Rat Warrens", "Whisker Alley", "The Squeaklands"],
 	&"goblin": ["Goblin Flea Market", "Snotgrease Row", "Little Gobtown"],
 	&"skeleton_brute": ["The Bone Yard", "Femur Heights", "Calcium Corner"],
+	&"goblin_spitter": ["Spitters' Row", "The Expectorate", "Loogie Lane"],
 	&"hobgoblin": ["Enforcer District", "Kneecap Plaza", "Protection Racket Row"],
 	&"crypt_horror": ["The Purple Quarter", "Mausoleum Mile", "The Moist Dark"],
 }
@@ -60,6 +61,7 @@ const BOSS_NAMES := {
 	&"rat": "The Rat King",
 	&"goblin": "Goblin Kingpin",
 	&"skeleton_brute": "The Bone Foreman",
+	&"goblin_spitter": "The Phlegm Sommelier",
 	&"hobgoblin": "Chief Kneecapper",
 	&"crypt_horror": "Regional Crypt Manager",
 }

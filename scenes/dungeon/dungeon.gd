@@ -307,6 +307,18 @@ func _spawn_guide() -> void:
 			return
 
 
+## Cosmetic ranged-attack projectile: a small dot zipping between tiles.
+func show_projectile(from: Vector2i, to: Vector2i, color := Color(0.65, 0.9, 0.3)) -> void:
+	var dot := ColorRect.new()
+	dot.color = color
+	dot.size = Vector2(4, 4)
+	dot.position = Vector2(from * TILE) + Vector2(6, 6)
+	_entities_root.add_child(dot)
+	var tween := dot.create_tween()
+	tween.tween_property(dot, "position", Vector2(to * TILE) + Vector2(6, 6), 0.15)
+	tween.tween_callback(dot.queue_free)
+
+
 func spawn_loot_box(tier: int, pos: Vector2i) -> void:
 	if not grid.is_open(pos):
 		return

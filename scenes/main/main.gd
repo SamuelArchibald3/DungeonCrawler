@@ -291,6 +291,10 @@ func _process(_delta: float) -> void:
 func _shot_tick() -> void:
 	_autorun_frames += 1
 	match _autorun_frames:
+		44:
+			if is_instance_valid(dungeon):
+				for e: Entity in dungeon.enemies:
+					e.hp = maxi(int(e.max_hp * 0.55), 1)  # show off health bars
 		45:
 			_capture("gameplay")
 		46:

@@ -9,7 +9,7 @@ enum State { AWAITING_INPUT, RESOLVING, LOCKED }
 ## "turn" every WORLD_TICK_SECONDS whether or not the player acts, and the
 ## player may act once per PLAYER_ACTION_SECONDS via held keys.
 const WORLD_TICK_SECONDS := 0.45
-const PLAYER_ACTION_SECONDS := 0.42
+const PLAYER_ACTION_SECONDS := 0.28
 
 const DIRECTION_ACTIONS := {
 	"move_up": Vector2i.UP,

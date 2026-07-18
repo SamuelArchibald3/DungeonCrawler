@@ -585,6 +585,20 @@ func _run() -> void:
 	tm.set_process(true)
 	c.hp = c.max_hp
 
+	# --- Enemy health bars: appear on damage, shift green -> red ---
+	var bar_rat := Entity.make_enemy(EnemyDef.all()[0], Vector2i(3, 3), 1)
+	dungeon.add_child(bar_rat)
+	await get_tree().process_frame
+	check(not bar_rat.health_bar_visible(), "health bar hidden at full HP")
+	bar_rat.hp = int(bar_rat.max_hp / 2.0)
+	check(bar_rat.health_bar_visible(), "health bar appears once damaged")
+	var half_hp_color: Color = bar_rat.health_bar_color()
+	bar_rat.hp = 1
+	var low_hp_color: Color = bar_rat.health_bar_color()
+	check(low_hp_color.r > half_hp_color.r and low_hp_color.g < half_hp_color.g,
+		"health bar shifts from green toward red as HP drops")
+	bar_rat.queue_free()
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

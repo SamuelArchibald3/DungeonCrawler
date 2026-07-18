@@ -4,7 +4,9 @@ extends Node2D
 ## grid_pos is the truth; the visual position tweens toward it cosmetically.
 
 const TILE := 16
-const MOVE_TWEEN_TIME := 0.08
+const MOVE_TWEEN_TIME := 0.08          # turn-based: quick hop
+const REALTIME_PLAYER_GLIDE := 0.26    # realtime: glide matching action cadence
+const REALTIME_ENEMY_GLIDE := 0.3
 
 static var _mono_font: SystemFont
 
@@ -15,7 +17,10 @@ var is_player := false
 
 ## Enemy-only fields (null/unused for the player)
 var enemy_def: EnemyDef
-var hp := 0
+var hp := 0:
+	set(value):
+		hp = value
+		_update_health_bar()
 var max_hp := 0
 var xp_value := 0
 var turn_counter := 0
@@ -27,6 +32,8 @@ var glyph_size := 13
 
 var _label: Label
 var _tween: Tween
+var _bar_bg: ColorRect
+var _bar_fill: ColorRect
 
 
 static func make(glyph_: String, color_: Color, pos: Vector2i) -> Entity:
@@ -91,6 +98,18 @@ func _ready() -> void:
 	add_child(_label)
 	_center_label.call_deferred()
 
+	if enemy_def != null:
+		_bar_bg = ColorRect.new()
+		_bar_bg.color = Color(0, 0, 0, 0.7)
+		_bar_bg.position = Vector2(1, -4)
+		_bar_bg.size = Vector2(TILE - 2, 3)
+		add_child(_bar_bg)
+		_bar_fill = ColorRect.new()
+		_bar_fill.position = Vector2(1, -4)
+		_bar_fill.size = Vector2(TILE - 2, 3)
+		add_child(_bar_fill)
+		_update_health_bar()
+
 
 func _center_label() -> void:
 	var ms := _label.get_combined_minimum_size()
@@ -104,8 +123,11 @@ func set_grid_pos(p: Vector2i, animate := true) -> void:
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	if animate and is_inside_tree():
+		var duration := MOVE_TWEEN_TIME
+		if GameState.realtime_mode:
+			duration = REALTIME_PLAYER_GLIDE if is_player else REALTIME_ENEMY_GLIDE
 		_tween = create_tween()
-		_tween.tween_property(self, "position", target, MOVE_TWEEN_TIME)
+		_tween.tween_property(self, "position", target, duration)
 	else:
 		position = target
 
@@ -120,6 +142,26 @@ func bump_toward(dir: Vector2i) -> void:
 	_tween = create_tween()
 	_tween.tween_property(self, "position", home + Vector2(dir * TILE) * 0.4, 0.05)
 	_tween.tween_property(self, "position", home, 0.07)
+
+
+## Health bar: hidden at full HP, green -> red as HP falls.
+func _update_health_bar() -> void:
+	if _bar_fill == null:
+		return
+	var damaged := hp < max_hp
+	_bar_bg.visible = damaged
+	_bar_fill.visible = damaged
+	var fraction := clampf(float(hp) / maxf(float(max_hp), 1.0), 0.0, 1.0)
+	_bar_fill.size.x = (TILE - 2) * fraction
+	_bar_fill.color = Color(0.9, 0.2, 0.15).lerp(Color(0.25, 0.8, 0.25), fraction)
+
+
+func health_bar_visible() -> bool:
+	return _bar_fill != null and _bar_fill.visible
+
+
+func health_bar_color() -> Color:
+	return _bar_fill.color if _bar_fill != null else Color()
 
 
 func display_name() -> String:

@@ -18,6 +18,7 @@ var min_floor: int = 1
 var telegraphs := false  # heavy hitters wind up one action before striking
 var ranged := false      # attacks from distance along line of sight
 var attack_range: int = 4
+var poison_chance := 0.0  # chance per landed hit to poison the player
 
 
 static func make(d: Dictionary) -> EnemyDef:
@@ -35,7 +36,7 @@ static func all() -> Array[EnemyDef]:
 			"color": Color(0.76, 0.6, 0.42),
 			"max_hp": 6, "attack": 2, "defense": 0, "xp": 3,
 			"move_every_n_turns": 1, "aggro_range": 6, "drop_chance": 0.08,
-			"min_floor": 1,
+			"min_floor": 1, "poison_chance": 0.25,
 		},
 		{
 			"id": &"goblin", "display_name": "Goblin", "glyph": "g",
@@ -56,7 +57,7 @@ static func all() -> Array[EnemyDef]:
 			"color": Color(0.65, 0.9, 0.3),
 			"max_hp": 9, "attack": 3, "defense": 0, "xp": 8,
 			"move_every_n_turns": 1, "aggro_range": 9, "drop_chance": 0.2,
-			"min_floor": 2, "ranged": true, "attack_range": 4,
+			"min_floor": 2, "ranged": true, "attack_range": 4, "poison_chance": 0.35,
 		},
 		{
 			"id": &"hobgoblin", "display_name": "Hobgoblin Enforcer", "glyph": "H",

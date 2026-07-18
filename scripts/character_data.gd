@@ -24,6 +24,7 @@ var equipment := {
 }
 var abilities: Array[StringName] = []
 var ability_cooldowns := {}      # ability id -> turns remaining
+var statuses := {}               # e.g. { &"poison": { "power": 2, "ticks": 4 } }
 
 
 func _init() -> void:

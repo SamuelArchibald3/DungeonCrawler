@@ -767,6 +767,7 @@ func _run() -> void:
 			dungeon.turn_manager._resolve_attack()
 			var loss_wall: int = 99 - slam_rat.hp
 			check(loss_wall == loss_open + 3, "wall slam adds +3 damage (%d vs %d)" % [loss_wall, loss_open])
+			check(slam_rat.statuses.get(&"stun", 0) > 0, "wall slam stuns the survivor")
 			dungeon.grid.remove_entity(slam_rat.grid_pos)
 			slam_rat.queue_free()
 			dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, p0)
@@ -789,6 +790,59 @@ func _run() -> void:
 		firm_brute.queue_free()
 		dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, attack_home)
 		dungeon.player.set_grid_pos(attack_home, false)
+	c.hp = c.max_hp
+
+	# --- Status effects: poison bites, tick damage, saferoom cleanse, stun ---
+	c.base_stats[&"DEX"] = 0
+	var venom_def: EnemyDef = null
+	for d: EnemyDef in EnemyDef.all():
+		if d.id == &"rat":
+			venom_def = d
+	venom_def.poison_chance = 1.0  # local instance: force the bite for the test
+	var venom_adj := Vector2i(-1, -1)
+	for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+		var p: Vector2i = dungeon.player.grid_pos + dir
+		if dungeon.grid.is_open(p) and not dungeon.grid.is_safe(p):
+			venom_adj = p
+			break
+	check(venom_adj != Vector2i(-1, -1), "open tile beside player for poison test")
+	if venom_adj != Vector2i(-1, -1):
+		var venom_rat := Entity.make_enemy(venom_def, venom_adj, 1)
+		dungeon.add_child(venom_rat)
+		dungeon.grid.place_entity(venom_rat, venom_adj)
+		c.hp = c.max_hp
+		c.statuses.clear()
+		GameState.floor_turns_left = 300
+		EnemyAI._attack_player(venom_rat, dungeon)
+		check(c.statuses.has(&"poison"), "venomous bite poisons the player")
+		var hp_after_bite: int = c.hp
+		dungeon.turn_manager._post_turn()
+		check(c.hp == hp_after_bite - 2, "poison burns 2 per tick")
+		if safe_pos != Vector2i(-1, -1):
+			var pre_cleanse: Vector2i = dungeon.player.grid_pos
+			dungeon.grid.move_entity(dungeon.player, pre_cleanse, safe_pos)
+			dungeon.player.set_grid_pos(safe_pos, false)
+			dungeon.turn_manager._post_turn()
+			check(not c.statuses.has(&"poison"), "saferoom cleanses poison")
+			dungeon.grid.move_entity(dungeon.player, safe_pos, pre_cleanse)
+			dungeon.player.set_grid_pos(pre_cleanse, false)
+		# Stunned enemies skip actions, then resume
+		var enemies_stash: Array[Entity] = dungeon.enemies
+		var solo: Array[Entity] = [venom_rat]
+		dungeon.enemies = solo
+		venom_rat.statuses[&"stun"] = 2
+		c.hp = c.max_hp
+		c.statuses.clear()
+		dungeon.turn_manager._resolve_enemies()
+		dungeon.turn_manager._resolve_enemies()
+		check(c.hp == c.max_hp, "stunned enemies skip their actions")
+		dungeon.turn_manager._resolve_enemies()
+		check(c.hp < c.max_hp, "stun wears off and the enemy resumes attacking")
+		dungeon.enemies = enemies_stash
+		dungeon.grid.remove_entity(venom_rat.grid_pos)
+		venom_rat.queue_free()
+	c.base_stats[&"DEX"] = dex_saved
+	c.statuses.clear()
 	c.hp = c.max_hp
 
 	# --- Death path shows game over ---

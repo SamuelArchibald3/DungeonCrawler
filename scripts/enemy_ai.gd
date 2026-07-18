@@ -118,4 +118,8 @@ static func _attack_player(enemy: Entity, dungeon: Dungeon) -> void:
 	var dmg := Combat.enemy_attack_damage(enemy, GameState.floor_number, c)
 	c.hp = maxi(c.hp - dmg, 0)
 	Events.msg("%s hits you for %d." % [enemy.display_name(), dmg], &"combat")
+	if enemy.enemy_def.poison_chance > 0.0 and c.hp > 0 \
+			and GameState.rng.randf() < enemy.enemy_def.poison_chance:
+		c.statuses[&"poison"] = { "power": 2, "ticks": 4 }
+		Events.msg("Venom seeps in. You are POISONED.", &"combat")
 	Events.hud_refresh.emit()

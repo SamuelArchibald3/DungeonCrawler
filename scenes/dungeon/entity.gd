@@ -38,12 +38,14 @@ var glyph_size := 13
 var telegraphs_attacks := false
 var winding_up := false
 var windup_target := Vector2i.ZERO
+var statuses := {}  # e.g. { &"stun": ticks_remaining }
 
 var _label: Label
 var _tween: Tween
 var _bar_bg: ColorRect
 var _bar_fill: ColorRect
 var _telegraph_mark: Label
+var _stun_mark: Label
 var _facing_dot: ColorRect
 
 
@@ -178,6 +180,21 @@ func play_attack_slash(dir: Vector2i) -> void:
 	tween.tween_property(slash, "rotation", base_angle + 0.9, 0.12)
 	tween.tween_property(slash, "modulate:a", 0.0, 0.14)
 	tween.chain().tween_callback(slash.queue_free)
+
+
+## Stun marker: a little "z" while the enemy is seeing stars.
+func set_stun_visual(active: bool) -> void:
+	if active and _stun_mark == null:
+		_stun_mark = Label.new()
+		_stun_mark.text = "z"
+		_stun_mark.position = Vector2(-3, -10)
+		_stun_mark.add_theme_font_size_override("font_size", 12)
+		_stun_mark.add_theme_color_override("font_color", Color(0.55, 0.8, 1.0))
+		_stun_mark.add_theme_constant_override("outline_size", 3)
+		_stun_mark.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		add_child(_stun_mark)
+	if _stun_mark != null:
+		_stun_mark.visible = active
 
 
 ## Brief white flash when taking a hit.

@@ -26,6 +26,7 @@ const PAGES := [
 		"Teal tiles are System-certified Safe Rooms™.\n\n" +
 		"• Monsters legally cannot enter. They will absolutely camp the doorway like unpaid interns.\n" +
 		"• You heal a little every turn inside, and the ceiling can't crush you here — even after the floor closes.\n" +
+		"• Saferooms also filter poison out of your blood. Somehow. Don't ask.\n" +
 		"• Level-up stat points can only be allocated in here (open your inventory). Union rules.\n" +
 		"• I also sell amenities: naps, showers, hot meals. Buffs last the whole run. Yes, I take gold. No, I don't haggle.\n" +
 		"• The timer keeps ticking, though. Safety is not the same as progress. Ask my therapist."],

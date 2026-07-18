@@ -5,6 +5,7 @@ extends PanelContainer
 var _name_label: Label
 var _hp_label: Label
 var _hp_bar: ProgressBar
+var _status_label: Label
 var _xp_label: Label
 var _floor_label: Label
 var _timer_label: Label
@@ -33,6 +34,11 @@ func _ready() -> void:
 	_hp_bar.show_percentage = false
 	_hp_bar.modulate = Color(0.9, 0.3, 0.3)
 	vbox.add_child(_hp_bar)
+
+	_status_label = Label.new()
+	_status_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.4))
+	_status_label.visible = false
+	vbox.add_child(_status_label)
 
 	_xp_label = Label.new()
 	vbox.add_child(_xp_label)
@@ -96,6 +102,12 @@ func refresh() -> void:
 	_weapon_label.text = "Weapon: %s" % (c.equipment[&"weapon"].display_name() if c.equipment[&"weapon"] != null else "Fists")
 	_gold_label.text = "Gold: %d" % c.gold
 	_viewers_label.text = "Viewers: %s" % Fame.format_viewers(Fame.viewers)
+
+	if c.statuses.has(&"poison"):
+		_status_label.text = "POISONED (%d)" % c.statuses[&"poison"]["ticks"]
+		_status_label.visible = true
+	else:
+		_status_label.visible = false
 
 	var quest_line := Quests.status_line()
 	_quest_label.text = quest_line

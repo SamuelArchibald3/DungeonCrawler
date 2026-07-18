@@ -230,9 +230,13 @@ func _apply_knockback(enemy: Entity, dir: Vector2i) -> void:
 		var slam := 3
 		enemy.hp -= slam
 		enemy.flash_hit()
-		Events.msg("%s slams into the wall for %d." % [enemy.display_name(), slam], &"combat")
 		if enemy.hp <= 0:
+			Events.msg("%s slams into the wall for %d." % [enemy.display_name(), slam], &"combat")
 			_kill_enemy(enemy)
+		else:
+			enemy.statuses[&"stun"] = 2
+			enemy.set_stun_visual(true)
+			Events.msg("%s slams into the wall for %d and is STUNNED." % [enemy.display_name(), slam], &"combat")
 
 
 func _kill_enemy(enemy: Entity) -> void:
@@ -285,6 +289,12 @@ func _resolve_enemies() -> void:
 	for enemy in dungeon.enemies.duplicate():
 		if enemy.hp <= 0:
 			continue
+		if enemy.statuses.get(&"stun", 0) > 0:
+			enemy.statuses[&"stun"] -= 1
+			if enemy.statuses[&"stun"] <= 0:
+				enemy.statuses.erase(&"stun")
+				enemy.set_stun_visual(false)
+			continue  # seeing stars: no action this tick
 		EnemyAI.act(enemy, dungeon)
 		if GameState.character.hp <= 0:
 			state = State.LOCKED
@@ -297,6 +307,24 @@ func _post_turn() -> void:
 	# Tick active-ability cooldowns
 	for id in c.ability_cooldowns.keys():
 		c.ability_cooldowns[id] = maxi(c.ability_cooldowns[id] - 1, 0)
+	# Poison: burns per tick, kills if unchecked, filtered out by saferooms
+	if c.statuses.has(&"poison"):
+		if dungeon.grid.is_safe(dungeon.player.grid_pos):
+			c.statuses.erase(&"poison")
+			Events.msg("The saferoom filters the venom out of your blood. Somehow.", &"system")
+		else:
+			var poison: Dictionary = c.statuses[&"poison"]
+			c.hp = maxi(c.hp - poison["power"], 0)
+			poison["ticks"] -= 1
+			Events.msg("Poison burns for %d." % poison["power"], &"combat")
+			if poison["ticks"] <= 0:
+				c.statuses.erase(&"poison")
+				Events.msg("The poison wears off.", &"combat")
+			if c.hp <= 0:
+				Events.msg("The poison finishes the job. Somewhere, a rat is smug.", &"system")
+				state = State.LOCKED
+				Events.player_died.emit()
+				return
 	# Saferoom regen
 	if dungeon.grid.is_safe(dungeon.player.grid_pos) and c.hp > 0:
 		c.heal(2)

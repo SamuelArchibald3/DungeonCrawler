@@ -7,9 +7,10 @@ signal closed
 const PAGES := [
 	["SO YOU'RE GOING TO DIE IN A DUNGEON",
 		"Welcome, crawler. I'm contractually required to help you.\n\n" +
-		"• Move with [b]WASD[/b] or the arrow keys. Every step is a turn; the dungeon moves when you do.\n" +
-		"• Walk INTO a monster to hit it. Violence is the dungeon's love language.\n" +
-		"• [b]Space[/b] waits a turn. Sometimes the bravest move is standing very still.\n" +
+		"• Move with [b]WASD[/b] or the arrow keys. The little gold dot shows which way you're facing.\n" +
+		"• Press [b]SPACE[/b] (or J) to attack whatever you're facing. Violence has a dedicated button now.\n" +
+		"• Your hits shove smaller monsters back — into walls, ideally. Heavies only budge mid-windup, which also cancels their big swing.\n" +
+		"• When something flashes [b]![/b], it's winding up. Move, shove, or accept the consequences.\n" +
 		"• Find the gold stairs tile and step on it to descend. Down is the only way out. Well — 'out.'"],
 	["LOOT BOXES AND OTHER BRIBES",
 		"Those colorful boxes? Bump them open. Bronze, Silver, Gold, Platinum — fancier box, fancier garbage.\n\n" +

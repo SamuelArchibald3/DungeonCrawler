@@ -37,11 +37,14 @@ func _process(delta: float) -> void:
 
 	_player_cooldown = maxf(_player_cooldown - delta, 0.0)
 	if _player_cooldown <= 0.0:
-		var dir := _held_direction()
-		if dir != Vector2i.ZERO:
-			_realtime_player_action(dir)
-		elif Input.is_action_just_pressed("ability"):
-			_realtime_ability()
+		if Input.is_action_pressed("attack"):
+			_realtime_attack()
+		else:
+			var dir := _held_direction()
+			if dir != Vector2i.ZERO:
+				_realtime_player_action(dir)
+			elif Input.is_action_just_pressed("ability"):
+				_realtime_ability()
 
 	_world_accum += delta
 	if _world_accum >= WORLD_TICK_SECONDS:
@@ -67,6 +70,14 @@ func _realtime_player_action(dir: Vector2i) -> void:
 	if acted:
 		_player_cooldown = PLAYER_ACTION_SECONDS
 		Events.hud_refresh.emit()
+	if state == State.RESOLVING:
+		state = State.AWAITING_INPUT
+
+
+func _realtime_attack() -> void:
+	state = State.RESOLVING
+	_resolve_attack()
+	_player_cooldown = PLAYER_ACTION_SECONDS
 	if state == State.RESOLVING:
 		state = State.AWAITING_INPUT
 
@@ -105,6 +116,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		_do_turn(Vector2i.RIGHT)
 	elif event.is_action_pressed("wait"):
 		_do_turn(Vector2i.ZERO)
+	elif event.is_action_pressed("attack"):
+		state = State.RESOLVING
+		_resolve_attack()
+		_resolve_enemies()
+		if state == State.RESOLVING:
+			_post_turn()
+		if state == State.RESOLVING:
+			state = State.AWAITING_INPUT
 	elif event.is_action_pressed("ability"):
 		_use_ability()
 
@@ -128,18 +147,32 @@ func _do_turn(dir: Vector2i) -> void:
 		state = State.AWAITING_INPUT
 
 
+## Attack the tile the player is facing. Always consumes the action —
+## whiffing dramatically is part of the show.
+func _resolve_attack() -> bool:
+	var player := dungeon.player
+	var target := player.grid_pos + player.facing
+	player.play_attack_slash(player.facing)
+	var occupant: Object = dungeon.grid.entity_at(target)
+	if occupant is Entity and (occupant as Entity).enemy_def != null:
+		_player_attack(occupant as Entity, player.facing)
+	elif occupant != null and occupant.has_method("on_bumped"):
+		occupant.on_bumped()  # smashing a box open counts as opening it
+	return true
+
+
 ## Returns true if the action consumed a turn.
 func _resolve_player(dir: Vector2i) -> bool:
 	if dir == Vector2i.ZERO:
 		return true  # wait
 
 	var player := dungeon.player
+	player.set_facing(dir)
 	var target := player.grid_pos + dir
 	var occupant: Object = dungeon.grid.entity_at(target)
 
 	if occupant is Entity and (occupant as Entity).enemy_def != null:
-		_player_attack(occupant as Entity, dir)
-		return true
+		return false  # blocked: attacks are a button now, not a shoulder-check
 
 	if occupant != null and occupant.has_method("on_bumped"):
 		occupant.on_bumped()
@@ -171,12 +204,35 @@ func _player_attack(enemy: Entity, dir: Vector2i) -> void:
 	var c: CharacterData = GameState.character
 	var dmg := Combat.player_attack_damage(c, enemy, GameState.rng)
 	enemy.hp -= dmg
-	dungeon.player.bump_toward(dir)
+	enemy.flash_hit()
 	if enemy.hp <= 0:
 		Events.msg("You hit the %s for %d, killing it." % [enemy.display_name(), dmg], &"combat")
 		_kill_enemy(enemy)
 	else:
 		Events.msg("You hit the %s for %d." % [enemy.display_name(), dmg], &"combat")
+		_apply_knockback(enemy, dir)
+
+
+## Hits shove smaller enemies back a tile; wall slams hurt. Heavies stand
+## firm — unless caught mid-windup, when a shove interrupts the telegraph.
+func _apply_knockback(enemy: Entity, dir: Vector2i) -> void:
+	if (enemy.is_boss or enemy.telegraphs_attacks) and not enemy.winding_up:
+		return
+	var push := enemy.grid_pos + dir
+	if dungeon.grid.is_open(push) and not dungeon.grid.is_safe(push):
+		dungeon.grid.move_entity(enemy, enemy.grid_pos, push)
+		enemy.set_grid_pos(push)
+		if enemy.winding_up:
+			enemy.winding_up = false
+			enemy.set_telegraphing(false)
+			Events.msg("The shove interrupts %s's windup." % enemy.display_name(), &"combat")
+	else:
+		var slam := 3
+		enemy.hp -= slam
+		enemy.flash_hit()
+		Events.msg("%s slams into the wall for %d." % [enemy.display_name(), slam], &"combat")
+		if enemy.hp <= 0:
+			_kill_enemy(enemy)
 
 
 func _kill_enemy(enemy: Entity) -> void:

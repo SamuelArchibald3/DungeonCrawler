@@ -10,10 +10,16 @@ const REALTIME_ENEMY_GLIDE := 0.3
 
 static var _mono_font: SystemFont
 
+const FACING_DOT_POS := {
+	Vector2i.UP: Vector2(6.5, -2), Vector2i.DOWN: Vector2(6.5, 15),
+	Vector2i.LEFT: Vector2(-2, 6.5), Vector2i.RIGHT: Vector2(15, 6.5),
+}
+
 var grid_pos: Vector2i
 var glyph := "?"
 var color := Color.WHITE
 var is_player := false
+var facing := Vector2i.DOWN
 
 ## Enemy-only fields (null/unused for the player)
 var enemy_def: EnemyDef
@@ -38,6 +44,7 @@ var _tween: Tween
 var _bar_bg: ColorRect
 var _bar_fill: ColorRect
 var _telegraph_mark: Label
+var _facing_dot: ColorRect
 
 
 static func make(glyph_: String, color_: Color, pos: Vector2i) -> Entity:
@@ -104,6 +111,13 @@ func _ready() -> void:
 	add_child(_label)
 	_center_label.call_deferred()
 
+	if is_player:
+		_facing_dot = ColorRect.new()
+		_facing_dot.color = Color(0.95, 0.85, 0.4)
+		_facing_dot.size = Vector2(3, 3)
+		add_child(_facing_dot)
+		set_facing(facing)
+
 	if enemy_def != null:
 		_bar_bg = ColorRect.new()
 		_bar_bg.color = Color(0, 0, 0, 0.7)
@@ -136,6 +150,42 @@ func set_grid_pos(p: Vector2i, animate := true) -> void:
 		_tween.tween_property(self, "position", target, duration)
 	else:
 		position = target
+
+
+func set_facing(dir: Vector2i) -> void:
+	if dir == Vector2i.ZERO:
+		return
+	facing = dir
+	if _facing_dot != null and FACING_DOT_POS.has(dir):
+		_facing_dot.position = FACING_DOT_POS[dir]
+
+
+## Attack visual: lunge plus a slash arc sweeping across the target tile.
+func play_attack_slash(dir: Vector2i) -> void:
+	bump_toward(dir)
+	if not is_inside_tree():
+		return
+	var slash := ColorRect.new()
+	slash.color = Color(1, 0.95, 0.7, 0.9)
+	slash.size = Vector2(14, 2)
+	slash.pivot_offset = Vector2(1, 1)
+	slash.position = Vector2((grid_pos + dir) * TILE) + Vector2(TILE / 2.0, TILE / 2.0)
+	var base_angle := Vector2(dir).angle()
+	slash.rotation = base_angle - 0.9
+	get_parent().add_child(slash)
+	var tween := slash.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(slash, "rotation", base_angle + 0.9, 0.12)
+	tween.tween_property(slash, "modulate:a", 0.0, 0.14)
+	tween.chain().tween_callback(slash.queue_free)
+
+
+## Brief white flash when taking a hit.
+func flash_hit() -> void:
+	if _label == null or not is_inside_tree():
+		return
+	_label.modulate = Color(4, 4, 4)
+	create_tween().tween_property(_label, "modulate", Color.WHITE, 0.15)
 
 
 ## Cosmetic half-step lunge for attacks.

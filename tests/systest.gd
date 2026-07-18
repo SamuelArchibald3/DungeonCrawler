@@ -699,6 +699,98 @@ func _run() -> void:
 	c.base_stats[&"DEX"] = dex_saved
 	c.hp = c.max_hp
 
+	# --- Button attacks, knockback, wall slams ---
+	if range_row != Vector2i(-1, -1):
+		var p0 := range_row
+		var p1 := range_row + Vector2i(1, 0)
+		var p2 := range_row + Vector2i(2, 0)
+		var attack_home: Vector2i = dungeon.player.grid_pos
+		dungeon.grid.move_entity(dungeon.player, attack_home, p0)
+		dungeon.player.set_grid_pos(p0, false)
+		dungeon.player.set_facing(Vector2i.RIGHT)
+
+		var kb_rat := Entity.make_enemy(EnemyDef.all()[0], p1, 1)
+		kb_rat.max_hp = 99
+		kb_rat.hp = 99
+		dungeon.add_child(kb_rat)
+		dungeon.grid.place_entity(kb_rat, p1)
+		dungeon.turn_manager._resolve_attack()
+		check(kb_rat.hp < 99, "button attack hits the faced tile")
+		check(kb_rat.grid_pos == p2, "hit shoves the rat back a tile")
+		check(dungeon.grid.entity_at(p2) == kb_rat, "occupancy follows knockback")
+		check(dungeon.turn_manager._resolve_player(Vector2i.RIGHT), "player steps into the vacated tile")
+		check(not dungeon.turn_manager._resolve_player(Vector2i.RIGHT), "walking into an enemy blocks instead of attacking")
+		dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, p0)
+		dungeon.player.set_grid_pos(p0, false)
+		dungeon.grid.remove_entity(kb_rat.grid_pos)
+		kb_rat.queue_free()
+
+		# Baseline damage with room to be shoved, then the same swing into a wall
+		var base_rat := Entity.make_enemy(EnemyDef.all()[0], p1, 1)
+		base_rat.max_hp = 99
+		base_rat.hp = 99
+		dungeon.add_child(base_rat)
+		dungeon.grid.place_entity(base_rat, p1)
+		GameState.rng.seed = 777
+		dungeon.turn_manager._resolve_attack()
+		var loss_open: int = 99 - base_rat.hp
+		dungeon.grid.remove_entity(base_rat.grid_pos)
+		base_rat.queue_free()
+
+		var slam_pos := Vector2i(-1, -1)
+		var slam_dir := Vector2i.ZERO
+		for y in dungeon.grid.height:
+			for x in dungeon.grid.width:
+				var pos := Vector2i(x, y)
+				for dir in [Vector2i.UP, Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT]:
+					if dungeon.grid.is_open(pos) and not dungeon.grid.is_safe(pos) \
+							and dungeon.grid.get_tile(pos + dir) == DungeonGrid.WALL \
+							and dungeon.grid.is_open(pos - dir) and not dungeon.grid.is_safe(pos - dir):
+						slam_pos = pos
+						slam_dir = dir
+						break
+				if slam_pos != Vector2i(-1, -1):
+					break
+			if slam_pos != Vector2i(-1, -1):
+				break
+		check(slam_pos != Vector2i(-1, -1), "found a wall-backed tile for the slam test")
+		if slam_pos != Vector2i(-1, -1):
+			dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, slam_pos - slam_dir)
+			dungeon.player.set_grid_pos(slam_pos - slam_dir, false)
+			dungeon.player.set_facing(slam_dir)
+			var slam_rat := Entity.make_enemy(EnemyDef.all()[0], slam_pos, 1)
+			slam_rat.max_hp = 99
+			slam_rat.hp = 99
+			dungeon.add_child(slam_rat)
+			dungeon.grid.place_entity(slam_rat, slam_pos)
+			GameState.rng.seed = 777
+			dungeon.turn_manager._resolve_attack()
+			var loss_wall: int = 99 - slam_rat.hp
+			check(loss_wall == loss_open + 3, "wall slam adds +3 damage (%d vs %d)" % [loss_wall, loss_open])
+			dungeon.grid.remove_entity(slam_rat.grid_pos)
+			slam_rat.queue_free()
+			dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, p0)
+			dungeon.player.set_grid_pos(p0, false)
+			dungeon.player.set_facing(Vector2i.RIGHT)
+
+		# Heavies stand firm — unless caught mid-windup
+		var firm_brute := Entity.make_enemy(brute_def, p1, 1)
+		firm_brute.max_hp = 99
+		firm_brute.hp = 99
+		dungeon.add_child(firm_brute)
+		dungeon.grid.place_entity(firm_brute, p1)
+		dungeon.turn_manager._resolve_attack()
+		check(firm_brute.grid_pos == p1, "heavies resist knockback")
+		firm_brute.winding_up = true
+		firm_brute.set_telegraphing(true)
+		dungeon.turn_manager._resolve_attack()
+		check(firm_brute.grid_pos == p2 and not firm_brute.winding_up, "shoving a winding heavy interrupts the telegraph")
+		dungeon.grid.remove_entity(firm_brute.grid_pos)
+		firm_brute.queue_free()
+		dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, attack_home)
+		dungeon.player.set_grid_pos(attack_home, false)
+	c.hp = c.max_hp
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

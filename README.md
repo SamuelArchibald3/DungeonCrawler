@@ -24,8 +24,9 @@ cooldown. Press **T** anytime to switch to classic turn-based pacing.
 
 | Key | Action |
 |---|---|
-| WASD / Arrows | Move (bump into enemies to attack, boxes to open) |
-| Space / . | Wait a turn (turn-based mode) |
+| WASD / Arrows | Move / set facing (bump boxes and NPCs to interact) |
+| Space / J | Attack the tile you're facing (shoves smaller enemies; wall slams hurt) |
+| . | Wait a turn (turn-based mode) |
 | T | Toggle real-time / turn-based pacing |
 | Q | Use active ability (granted at the level-3 race/class event) |
 | I / Tab | Inventory & equipment (double-click to equip/use/unequip) |

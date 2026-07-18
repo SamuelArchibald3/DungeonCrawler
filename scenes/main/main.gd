@@ -281,7 +281,7 @@ func _process(_delta: float) -> void:
 		char_create_screen._on_confirm()
 		return
 
-	var actions := ["move_up", "move_down", "move_left", "move_right", "wait", "ability"]
+	var actions := ["move_up", "move_down", "move_left", "move_right", "wait", "ability", "attack"]
 	var ev := InputEventAction.new()
 	ev.action = actions[_autorun_rng.randi_range(0, actions.size() - 1)]
 	ev.pressed = true

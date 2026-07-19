@@ -70,6 +70,7 @@ func _ready() -> void:
 	if spawn_zone != -1:
 		zone_visited[spawn_zone] = true  # no announcement for home turf
 	Crawlers.assign_floor_positions(floor_data)
+	_spawn_initial_crawlers()
 
 	turn_manager = TurnManager.new()
 	turn_manager.dungeon = self
@@ -312,6 +313,58 @@ func _spawn_guide() -> void:
 			grid.place_entity(guide, pos)
 			_entities_root.add_child(guide)
 			return
+
+
+## --- Real-tier crawler bodies ---
+
+func _spawn_initial_crawlers() -> void:
+	for cr in Crawlers.npc_records():
+		if cr.alive and not cr.descended \
+				and maxi(absi(cr.pos.x - floor_data.spawn.x), absi(cr.pos.y - floor_data.spawn.y)) <= TurnManager.ACTIVE_RADIUS:
+			promote_crawler(cr)
+
+
+## Instantiate an abstract crawler as a real entity near its recorded position.
+func promote_crawler(cr: CrawlerRecord) -> void:
+	if cr.tier == CrawlerRecord.Tier.REAL or not cr.alive:
+		return
+	var pos := _nearest_open_tile(cr.pos)
+	if pos == Vector2i(-1, -1):
+		return
+	var body := Entity.make_crawler(cr.sheet, pos, cr.color)
+	body.crawler_record = cr
+	cr.entity = body
+	cr.tier = CrawlerRecord.Tier.REAL
+	cr.controller = AIController.new()
+	grid.place_entity(body, pos)
+	_entities_root.add_child(body)
+	real_crawler_entities.append(body)
+
+
+## Fold a real crawler back into its abstract record.
+func demote_crawler(cr: CrawlerRecord) -> void:
+	if cr.tier != CrawlerRecord.Tier.REAL or cr.entity == null:
+		return
+	if is_instance_valid(cr.entity):
+		cr.pos = cr.entity.grid_pos
+		cr.room = floor_data.room_of.get(cr.pos, cr.room)
+		grid.remove_entity(cr.entity.grid_pos)
+		real_crawler_entities.erase(cr.entity)
+		cr.entity.queue_free()
+	cr.entity = null
+	cr.controller = null
+	cr.tier = CrawlerRecord.Tier.ABSTRACT
+
+
+func _nearest_open_tile(around: Vector2i) -> Vector2i:
+	for radius in 4:
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				var pos := around + Vector2i(dx, dy)
+				if grid.is_open(pos) and grid.get_tile(pos) != DungeonGrid.STAIRS \
+						and grid.get_tile(pos) != DungeonGrid.LOCKED_STAIRS:
+					return pos
+	return Vector2i(-1, -1)
 
 
 ## Cosmetic ranged-attack projectile: a small dot zipping between tiles.

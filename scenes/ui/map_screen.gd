@@ -128,6 +128,16 @@ func _draw_map() -> void:
 	var borough: Variant = dungeon.borough_boss
 	if borough != null and is_instance_valid(borough) and borough.hp > 0 and dungeon.explored.has(borough.grid_pos):
 		_draw_marker(origin, scale, borough.grid_pos, Color(1.0, 0.3, 0.55))
+	# Fellow crawlers: bright dots when instantiated, faint gray when abstract
+	for cr in Crawlers.roster:
+		if cr.is_player or not cr.alive or cr.descended:
+			continue
+		var cpos := cr.pos
+		if cr.tier == CrawlerRecord.Tier.REAL and cr.entity != null and is_instance_valid(cr.entity):
+			cpos = cr.entity.grid_pos
+		if dungeon.explored.has(cpos):
+			var marker_color := cr.color if cr.tier == CrawlerRecord.Tier.REAL else Color(0.6, 0.6, 0.6, 0.7)
+			_draw_marker(origin, scale, cpos, marker_color)
 	_draw_marker(origin, scale, dungeon.player.grid_pos, Color.WHITE)
 
 

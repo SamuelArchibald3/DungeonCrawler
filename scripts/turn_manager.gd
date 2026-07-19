@@ -264,6 +264,12 @@ func pvp_hit(cr: CrawlerRecord, victim_body: Entity, dir: Vector2i) -> void:
 	if cr.is_player or victim.is_player:
 		Events.msg("%s hits %s for %d." % [cr.sheet.char_name, victim.sheet.char_name, dmg], &"combat")
 	damage_crawler(victim, dmg, "slain by %s" % cr.sheet.char_name, cr)
+	# Survivors get shoved like anyone else
+	if victim.alive and victim.entity != null and is_instance_valid(victim.entity):
+		var push := victim.entity.grid_pos + dir
+		if dungeon.grid.is_open(push) and not dungeon.grid.is_safe(push):
+			dungeon.grid.move_entity(victim.entity, victim.entity.grid_pos, push)
+			victim.entity.set_grid_pos(push)
 
 
 ## Single choke point for damage to any crawler, player or NPC.
@@ -273,15 +279,21 @@ func damage_crawler(cr: CrawlerRecord, amount: int, _cause: String, killer: Craw
 		cr.entity.flash_hit()
 	if cr.is_player:
 		Events.hud_refresh.emit()
+	if cr.entity != null and is_instance_valid(cr.entity) and not cr.is_player:
+		cr.entity.max_hp = cr.sheet.max_hp
+		cr.entity.hp = cr.sheet.hp  # mirror to the body's health bar
 	if cr.sheet.hp <= 0 and cr.alive:
 		if cr.is_player:
 			state = State.LOCKED
 			Events.player_died.emit()
 		else:
-			cr.alive = false
-			if killer != null:
-				killer.kills += 1
-			# Roster bookkeeping/kill feed arrive with the Crawlers autoload
+			Crawlers.kill(cr, _cause, killer)
+			if cr.entity != null and is_instance_valid(cr.entity):
+				dungeon.grid.remove_entity(cr.entity.grid_pos)
+				dungeon.real_crawler_entities.erase(cr.entity)
+				cr.entity.queue_free()
+			cr.entity = null
+			cr.controller = null
 
 
 ## Hits shove smaller enemies back a tile; wall slams hurt. Heavies stand
@@ -386,7 +398,18 @@ func _resolve_enemies() -> void:
 			return  # a death (the player's) halted the world
 
 
+## Real-tier NPC crawlers take their actions alongside the world tick.
+func _resolve_crawlers() -> void:
+	for cr in Crawlers.real_records():
+		if cr.is_player or not cr.alive or cr.controller == null:
+			continue
+		cr.controller.think(cr, dungeon, self)
+		if state == State.LOCKED:
+			return
+
+
 func _post_turn() -> void:
+	_resolve_crawlers()
 	var c: CharacterData = GameState.character
 	# Tick active-ability cooldowns
 	for id in c.ability_cooldowns.keys():

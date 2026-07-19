@@ -25,6 +25,26 @@ func _ready() -> void:
 	add_child(_text)
 
 	Events.message.connect(_on_message)
+	Events.crawler_event.connect(_on_crawler_event)
+
+
+## The cohort kill feed.
+func _on_crawler_event(kind: StringName, crawler: CrawlerRecord, data: Dictionary) -> void:
+	match kind:
+		&"died":
+			var line := "Crawler %s has died. %d remain." % [crawler.sheet.char_name, Crawlers.alive_count()]
+			var killer: Variant = data.get("killer")
+			if killer != null and killer is CrawlerRecord and (killer as CrawlerRecord).is_player:
+				line = "You killed Crawler %s. %d remain. The viewers are ELECTRIC." % [
+					crawler.sheet.char_name, Crawlers.alive_count()]
+			_text.append_text("[color=#e05050]%s[/color]\n" % line)
+		&"pvp_kill":
+			_text.append_text("[color=#e05050]Crawler-on-crawler violence: %s. The System approves.[/color]\n" % str(data.get("summary", "")))
+		&"descended":
+			_text.append_text("[color=#909090]Crawler %s has taken the stairs. %d below.[/color]\n" % [
+				crawler.sheet.char_name, Crawlers.descended_count()])
+		&"emote":
+			_text.append_text("[color=#7fd8e8]%s waves at you.[/color]\n" % crawler.sheet.char_name)
 
 
 func _on_message(text: String, category: StringName) -> void:

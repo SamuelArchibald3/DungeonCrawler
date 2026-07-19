@@ -845,6 +845,88 @@ func _run() -> void:
 	c.statuses.clear()
 	c.hp = c.max_hp
 
+	# --- Cohort: real-tier NPC crawlers (controlled roster) ---
+	if range_row != Vector2i(-1, -1):
+		var q0 := range_row
+		var q1 := range_row + Vector2i(1, 0)
+		var q2 := range_row + Vector2i(2, 0)
+		var q3 := range_row + Vector2i(3, 0)
+		var cohort_home: Vector2i = dungeon.player.grid_pos
+		dungeon.grid.move_entity(dungeon.player, cohort_home, q0)
+		dungeon.player.set_grid_pos(q0, false)
+
+		# Promotion: an abstract record becomes a live body sharing the sheet
+		var hostile_rec := CrawlerRecord.make(901, CharGenerator.random_character())
+		hostile_rec.disposition = CrawlerRecord.Disposition.HOSTILE
+		hostile_rec.pos = q1
+		Crawlers.roster.append(hostile_rec)
+		dungeon.promote_crawler(hostile_rec)
+		check(hostile_rec.tier == CrawlerRecord.Tier.REAL and hostile_rec.entity != null,
+			"abstract record promotes to a real entity")
+		check(hostile_rec.entity.sheet == hostile_rec.sheet, "promoted body shares the record's sheet")
+		check(dungeon.real_crawler_entities.has(hostile_rec.entity), "promoted body joins the crawler list")
+
+		# Hostile disposition: attacks the player on sight
+		c.hp = c.max_hp
+		hostile_rec.controller.think(hostile_rec, dungeon, dungeon.turn_manager)
+		check(c.hp < c.max_hp, "hostile crawler attacks the player")
+
+		# Demotion round-trip preserves position and sheet state
+		var pre_demote_hp: int = hostile_rec.sheet.hp
+		var pre_demote_pos: Vector2i = hostile_rec.entity.grid_pos
+		dungeon.demote_crawler(hostile_rec)
+		check(hostile_rec.tier == CrawlerRecord.Tier.ABSTRACT and hostile_rec.entity == null,
+			"demotion folds the body back into the record")
+		check(hostile_rec.pos == pre_demote_pos, "demotion preserves position")
+		dungeon.promote_crawler(hostile_rec)
+		check(hostile_rec.sheet.hp == pre_demote_hp, "promotion round-trip preserves hp")
+		dungeon.demote_crawler(hostile_rec)
+
+		# Wary disposition: keeps its distance from other crawlers
+		var wary_rec := CrawlerRecord.make(902, CharGenerator.random_character())
+		wary_rec.disposition = CrawlerRecord.Disposition.WARY
+		wary_rec.sheet.base_stats[&"DEX"] = 0
+		wary_rec.pos = q1
+		Crawlers.roster.append(wary_rec)
+		dungeon.promote_crawler(wary_rec)
+		wary_rec.controller.think(wary_rec, dungeon, dungeon.turn_manager)
+		var wary_dist := maxi(absi(wary_rec.entity.grid_pos.x - q0.x), absi(wary_rec.entity.grid_pos.y - q0.y))
+		check(wary_dist > 1, "wary crawler backs away from the player (dist %d)" % wary_dist)
+
+		# Enemies hunt the nearest crawler, not just the player
+		var near_wary := Vector2i(-1, -1)
+		for dir in [Vector2i.RIGHT, Vector2i.DOWN, Vector2i.UP, Vector2i.LEFT]:
+			var p: Vector2i = wary_rec.entity.grid_pos + dir
+			if dungeon.grid.is_open(p) and not dungeon.grid.is_safe(p) \
+					and maxi(absi(p.x - q0.x), absi(p.y - q0.y)) > 1:
+				near_wary = p
+				break
+		if near_wary != Vector2i(-1, -1):
+			var hunter := Entity.make_enemy(EnemyDef.all()[0], near_wary, 1)
+			dungeon.add_child(hunter)
+			dungeon.grid.place_entity(hunter, near_wary)
+			c.hp = c.max_hp
+			var wary_hp: int = wary_rec.sheet.hp
+			EnemyAI.act(hunter, dungeon)
+			check(wary_rec.sheet.hp < wary_hp, "enemy attacks the nearest crawler")
+			check(c.hp == c.max_hp, "the player is left alone when not nearest")
+			dungeon.grid.remove_entity(hunter.grid_pos)
+			hunter.queue_free()
+
+		# NPC death: roster bookkeeping and body cleanup
+		var alive_before: int = Crawlers.alive_count()
+		dungeon.turn_manager.damage_crawler(wary_rec, 9999, "test hazard")
+		check(not wary_rec.alive, "lethal damage kills the NPC record")
+		check(wary_rec.entity == null, "dead crawler's body is cleaned up")
+		check(Crawlers.alive_count() == alive_before - 1, "cohort count drops on death")
+		check(Crawlers.death_order.has(902), "death order records the fallen")
+
+		Crawlers.roster.erase(hostile_rec)
+		Crawlers.roster.erase(wary_rec)
+		dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, cohort_home)
+		dungeon.player.set_grid_pos(cohort_home, false)
+	c.hp = c.max_hp
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

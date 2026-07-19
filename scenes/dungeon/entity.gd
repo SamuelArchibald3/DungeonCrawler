@@ -63,6 +63,16 @@ static func make(glyph_: String, color_: Color, pos: Vector2i) -> Entity:
 	return e
 
 
+## An NPC crawler's body: an "@" in the crawler's color, health-bar enabled,
+## sheet-backed like the player.
+static func make_crawler(sheet_: CharacterData, pos: Vector2i, color_: Color) -> Entity:
+	var e := make("@", color_, pos)
+	e.sheet = sheet_
+	e.max_hp = sheet_.max_hp
+	e.hp = sheet_.hp
+	return e
+
+
 static func make_enemy(def: EnemyDef, pos: Vector2i, floor_num: int) -> Entity:
 	var e := make(def.glyph, def.color, pos)
 	e.enemy_def = def
@@ -125,7 +135,7 @@ func _ready() -> void:
 		add_child(_facing_dot)
 		set_facing(facing)
 
-	if enemy_def != null:
+	if enemy_def != null or (sheet != null and not is_player):
 		_bar_bg = ColorRect.new()
 		_bar_bg.color = Color(0, 0, 0, 0.7)
 		_bar_bg.position = Vector2(1, -4)

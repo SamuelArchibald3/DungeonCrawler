@@ -36,6 +36,17 @@ func on_bumped() -> void:
 	open_box()
 
 
+## An NPC crawler looting this box: contents to their sheet, no player
+## signals, no log spam.
+func open_for_npc(cr: CrawlerRecord) -> void:
+	cr.sheet.gold += (tier + 1) * (5 + GameState.rng.randi_range(0, 10))
+	cr.sheet.inventory.append(
+		LootGenerator.roll_item(GameState.floor_number, LootGenerator.roll_rarity(tier, GameState.floor_number)))
+	if dungeon != null:
+		dungeon.grid.remove_entity(grid_pos)
+	queue_free()
+
+
 func open_box() -> void:
 	var tier_name: String = LootGenerator.TIER_NAMES[tier]
 	Events.msg("[color=%s]%s Box[/color] opened. %s" % [

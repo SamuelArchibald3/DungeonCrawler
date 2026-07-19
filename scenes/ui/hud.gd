@@ -12,6 +12,7 @@ var _timer_label: Label
 var _weapon_label: Label
 var _gold_label: Label
 var _viewers_label: Label
+var _crawlers_label: Label
 var _ability_label: Label
 var _quest_label: Label
 
@@ -59,6 +60,10 @@ func _ready() -> void:
 	_viewers_label.add_theme_color_override("font_color", Color(0.9, 0.6, 0.75))
 	vbox.add_child(_viewers_label)
 
+	_crawlers_label = Label.new()
+	_crawlers_label.add_theme_color_override("font_color", Color(0.85, 0.75, 0.55))
+	vbox.add_child(_crawlers_label)
+
 	_ability_label = Label.new()
 	vbox.add_child(_ability_label)
 
@@ -70,6 +75,7 @@ func _ready() -> void:
 	Events.floor_changed.connect(func(_n: int) -> void: refresh())
 	Events.level_up.connect(func(_n: int) -> void: refresh())
 	Events.viewers_changed.connect(func(_n: int) -> void: refresh())
+	Events.cohort_changed.connect(refresh)
 	refresh()
 
 
@@ -102,6 +108,7 @@ func refresh() -> void:
 	_weapon_label.text = "Weapon: %s" % (c.equipment[&"weapon"].display_name() if c.equipment[&"weapon"] != null else "Fists")
 	_gold_label.text = "Gold: %d" % c.gold
 	_viewers_label.text = "Viewers: %s" % Fame.format_viewers(Fame.viewers)
+	_crawlers_label.text = "Crawlers: %d alive · %d below" % [Crawlers.alive_count(), Crawlers.descended_count()]
 
 	if c.statuses.has(&"poison"):
 		_status_label.text = "POISONED (%d)" % c.statuses[&"poison"]["ticks"]

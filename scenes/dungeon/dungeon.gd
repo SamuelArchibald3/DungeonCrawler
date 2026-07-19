@@ -32,6 +32,10 @@ var guide: Guide
 var borough_boss: Entity
 
 ## Neighbourhoods: aligned with floor_data.zones by index
+## Crawler entities currently instantiated on this floor (player + real-tier
+## NPCs). Enemy AI targets the nearest of these.
+var real_crawler_entities: Array[Entity] = []
+
 var zones_runtime: Array = []  # [{ "name": String, "def": EnemyDef, "boss": Entity }]
 var zone_visited := {}  # zone index -> true
 var explored := {}  # Vector2i -> true (fog-of-war for the map screen)
@@ -138,8 +142,10 @@ func _spawn_stairs_marker() -> void:
 func _spawn_player() -> void:
 	player = Entity.make("@", Color.WHITE, floor_data.spawn)
 	player.is_player = true
+	player.sheet = GameState.character
 	grid.place_entity(player, floor_data.spawn)
 	_entities_root.add_child(player)
+	real_crawler_entities.append(player)
 
 	var cam := Camera2D.new()
 	cam.zoom = Vector2(2.5, 2.5)

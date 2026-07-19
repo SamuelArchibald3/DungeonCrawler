@@ -24,6 +24,20 @@ var saferoom_announced := false
 var _collapse_safe_notified := false
 var _player_cooldown := 0.0
 var _world_accum := 0.0
+var _player_rec: CrawlerRecord
+
+
+## The player's roster record (roster ownership moves to a Crawlers autoload
+## in a later milestone; until then TurnManager mints it per floor).
+func player_record() -> CrawlerRecord:
+	if _player_rec == null:
+		_player_rec = CrawlerRecord.make(0, GameState.character)
+		_player_rec.is_player = true
+		_player_rec.tier = CrawlerRecord.Tier.REAL
+	_player_rec.entity = dungeon.player
+	if dungeon.player != null:
+		dungeon.player.crawler_record = _player_rec
+	return _player_rec
 
 
 ## Real-time pacing: player acts on held keys with a cooldown; the world
@@ -147,70 +161,123 @@ func _do_turn(dir: Vector2i) -> void:
 		state = State.AWAITING_INPUT
 
 
-## Attack the tile the player is facing. Always consumes the action —
-## whiffing dramatically is part of the show.
+## Legacy wrappers: the pre-cohort single-player API, bound to roster[0].
 func _resolve_attack() -> bool:
-	var player := dungeon.player
-	var target := player.grid_pos + player.facing
-	player.play_attack_slash(player.facing)
+	return crawler_attack(player_record())
+
+
+func _resolve_player(dir: Vector2i) -> bool:
+	return crawler_move(player_record(), dir)
+
+
+## Attack the tile the crawler is facing. Always consumes the action —
+## whiffing dramatically is part of the show.
+func crawler_attack(cr: CrawlerRecord) -> bool:
+	var body := cr.entity
+	var target := body.grid_pos + body.facing
+	body.play_attack_slash(body.facing)
 	var occupant: Object = dungeon.grid.entity_at(target)
 	if occupant is Entity and (occupant as Entity).enemy_def != null:
-		_player_attack(occupant as Entity, player.facing)
-	elif occupant != null and occupant.has_method("on_bumped"):
+		melee_hit(cr, occupant as Entity, body.facing)
+	elif occupant is Entity and (occupant as Entity).is_crawler():
+		pvp_hit(cr, occupant as Entity, body.facing)
+	elif cr.is_player and occupant != null and occupant.has_method("on_bumped"):
 		occupant.on_bumped()  # smashing a box open counts as opening it
 	return true
 
 
 ## Returns true if the action consumed a turn.
-func _resolve_player(dir: Vector2i) -> bool:
+func crawler_move(cr: CrawlerRecord, dir: Vector2i) -> bool:
 	if dir == Vector2i.ZERO:
 		return true  # wait
 
-	var player := dungeon.player
-	player.set_facing(dir)
-	var target := player.grid_pos + dir
+	var body := cr.entity
+	body.set_facing(dir)
+	var target := body.grid_pos + dir
 	var occupant: Object = dungeon.grid.entity_at(target)
 
-	if occupant is Entity and (occupant as Entity).enemy_def != null:
-		return false  # blocked: attacks are a button now, not a shoulder-check
+	if occupant is Entity and ((occupant as Entity).enemy_def != null or (occupant as Entity).is_crawler()):
+		return false  # blocked: attacks are a button, not a shoulder-check
 
 	if occupant != null and occupant.has_method("on_bumped"):
-		occupant.on_bumped()
-		return true
+		if cr.is_player:
+			occupant.on_bumped()
+			return true
+		return false  # NPC interactions with boxes/NPCs arrive in later milestones
 
 	if not dungeon.grid.is_walkable(target):
 		return false  # bumped a wall: no turn consumed
 
-	dungeon.grid.move_entity(player, player.grid_pos, target)
-	player.set_grid_pos(target)
+	dungeon.grid.move_entity(body, body.grid_pos, target)
+	body.set_grid_pos(target)
 
-	if dungeon.grid.is_safe(target) and not saferoom_announced:
-		saferoom_announced = true
-		Events.msg("You enter a System-certified Safe Room™. Monsters legally cannot follow. Probably.", &"system")
-
-	var zone := dungeon.zone_at(target)
-	if zone != -1 and not dungeon.zone_visited.has(zone):
-		dungeon.zone_visited[zone] = true
-		Events.msg("Now entering %s. Population: hostile." % dungeon.zone_name(zone), &"system")
+	if cr.is_player:
+		if dungeon.grid.is_safe(target) and not saferoom_announced:
+			saferoom_announced = true
+			Events.msg("You enter a System-certified Safe Room™. Monsters legally cannot follow. Probably.", &"system")
+		var zone := dungeon.zone_at(target)
+		if zone != -1 and not dungeon.zone_visited.has(zone):
+			dungeon.zone_visited[zone] = true
+			Events.msg("Now entering %s. Population: hostile." % dungeon.zone_name(zone), &"system")
 
 	if dungeon.grid.get_tile(target) == DungeonGrid.STAIRS:
-		state = State.LOCKED
-		dungeon.descend_requested.emit()
-		return false
+		if cr.is_player:
+			state = State.LOCKED
+			dungeon.descend_requested.emit()
+			return false
+		# NPC descent lands with the floor-lifecycle milestone
 	return true
 
 
 func _player_attack(enemy: Entity, dir: Vector2i) -> void:
-	var c: CharacterData = GameState.character
-	var dmg := Combat.player_attack_damage(c, enemy, GameState.rng)
+	melee_hit(player_record(), enemy, dir)
+
+
+## A crawler's melee strike against a monster.
+func melee_hit(cr: CrawlerRecord, enemy: Entity, dir: Vector2i) -> void:
+	var dmg := Combat.player_attack_damage(cr.sheet, enemy, GameState.rng)
 	enemy.hp -= dmg
 	enemy.flash_hit()
 	if enemy.hp <= 0:
-		Events.msg("You hit the %s for %d, killing it." % [enemy.display_name(), dmg], &"combat")
-		_kill_enemy(enemy)
+		if cr.is_player:
+			Events.msg("You hit the %s for %d, killing it." % [enemy.display_name(), dmg], &"combat")
+		kill_enemy(enemy, cr)
 	else:
-		Events.msg("You hit the %s for %d." % [enemy.display_name(), dmg], &"combat")
+		if cr.is_player:
+			Events.msg("You hit the %s for %d." % [enemy.display_name(), dmg], &"combat")
 		_apply_knockback(enemy, dir)
+
+
+## Crawler-vs-crawler melee (PvP). Messages only when the player is involved.
+func pvp_hit(cr: CrawlerRecord, victim_body: Entity, dir: Vector2i) -> void:
+	var victim: CrawlerRecord = victim_body.crawler_record
+	if victim == null and victim_body.is_player:
+		victim = player_record()
+	if victim == null:
+		return
+	var dmg := Combat.crawler_vs_crawler_damage(cr.sheet, victim.sheet, GameState.rng)
+	victim_body.bump_toward(Vector2i.ZERO - dir)
+	if cr.is_player or victim.is_player:
+		Events.msg("%s hits %s for %d." % [cr.sheet.char_name, victim.sheet.char_name, dmg], &"combat")
+	damage_crawler(victim, dmg, "slain by %s" % cr.sheet.char_name, cr)
+
+
+## Single choke point for damage to any crawler, player or NPC.
+func damage_crawler(cr: CrawlerRecord, amount: int, _cause: String, killer: CrawlerRecord = null) -> void:
+	cr.sheet.hp = maxi(cr.sheet.hp - amount, 0)
+	if cr.entity != null and is_instance_valid(cr.entity):
+		cr.entity.flash_hit()
+	if cr.is_player:
+		Events.hud_refresh.emit()
+	if cr.sheet.hp <= 0 and cr.alive:
+		if cr.is_player:
+			state = State.LOCKED
+			Events.player_died.emit()
+		else:
+			cr.alive = false
+			if killer != null:
+				killer.kills += 1
+			# Roster bookkeeping/kill feed arrive with the Crawlers autoload
 
 
 ## Hits shove smaller enemies back a tile; wall slams hurt. Heavies stand
@@ -240,41 +307,53 @@ func _apply_knockback(enemy: Entity, dir: Vector2i) -> void:
 
 
 func _kill_enemy(enemy: Entity) -> void:
-	var c: CharacterData = GameState.character
-	GameState.kills += 1
+	kill_enemy(enemy, player_record())
+
+
+## Any crawler killing a monster. Floor-wide effects (stairs unlock, box
+## drops) happen for every killer; player-attributed signals, map reveals,
+## and log messages only fire for roster[0].
+func kill_enemy(enemy: Entity, killer: CrawlerRecord) -> void:
+	if killer.is_player:
+		GameState.kills += 1
 	dungeon.grid.remove_entity(enemy.grid_pos)
 	dungeon.enemies.erase(enemy)
 
 	if enemy.is_borough:
-		Events.msg("BOROUGH BOSS DEFEATED: %s. The stairwell is under new management. Yours." % enemy.boss_name, &"system")
 		dungeon.unlock_stairs()
-		Events.msg("The sealed stairwell grinds open. Express route: unlocked.", &"system")
 		dungeon.spawn_loot_box(3, enemy.grid_pos)  # guaranteed platinum box
-		dungeon.reveal_all()
-		Events.msg("Full borough survey unlocked. The map is yours.", &"system")
-		Events.borough_boss_killed.emit()
+		if killer.is_player:
+			Events.msg("BOROUGH BOSS DEFEATED: %s. The stairwell is under new management. Yours." % enemy.boss_name, &"system")
+			Events.msg("The sealed stairwell grinds open. Express route: unlocked.", &"system")
+			dungeon.reveal_all()
+			Events.msg("Full borough survey unlocked. The map is yours.", &"system")
+			Events.borough_boss_killed.emit()
 	elif enemy.is_boss:
-		Events.msg("NEIGHBOURHOOD BOSS DEFEATED: %s. The locals do not send their regards." % enemy.boss_name, &"system")
 		dungeon.spawn_loot_box(2, enemy.grid_pos)  # guaranteed gold box
-		if enemy.zone_index != -1:
-			dungeon.reveal_zone(enemy.zone_index)
-			Events.msg("District survey data unlocked: %s added to your map." % dungeon.zone_name(enemy.zone_index), &"system")
+		if killer.is_player:
+			Events.msg("NEIGHBOURHOOD BOSS DEFEATED: %s. The locals do not send their regards." % enemy.boss_name, &"system")
+			if enemy.zone_index != -1:
+				dungeon.reveal_zone(enemy.zone_index)
+				Events.msg("District survey data unlocked: %s added to your map." % dungeon.zone_name(enemy.zone_index), &"system")
 	elif GameState.rng.randf() < enemy.enemy_def.drop_chance:
 		dungeon.spawn_loot_box(0, enemy.grid_pos)  # bronze box drop
 
 	var gold := 1 + GameState.rng.randi_range(0, 2) + floori(enemy.xp_value / 3.0)
-	c.gold += gold
-	Events.msg("+%d gold." % gold, &"loot")
-	Events.enemy_killed.emit(enemy.enemy_def.id, enemy.is_boss)
-	if enemy.is_boss and _all_bosses_dead():
-		Events.all_bosses_cleared.emit()
-		Events.msg("ALL NEIGHBOURHOOD BOSSES DEFEATED. The floor's org chart is now a suggestion.", &"system")
+	killer.sheet.gold += gold
+	killer.kills += 1
+	if killer.is_player:
+		Events.msg("+%d gold." % gold, &"loot")
+		Events.enemy_killed.emit(enemy.enemy_def.id, enemy.is_boss)
+		if enemy.is_boss and _all_bosses_dead():
+			Events.all_bosses_cleared.emit()
+			Events.msg("ALL NEIGHBOURHOOD BOSSES DEFEATED. The floor's org chart is now a suggestion.", &"system")
 
-	if c.gain_xp(enemy.xp_value):
-		Events.msg("LEVEL UP! You are now level %d. The System is mildly impressed." % c.level, &"system")
-		Events.level_up.emit(c.level)
+	if killer.sheet.gain_xp(enemy.xp_value) and killer.is_player:
+		Events.msg("LEVEL UP! You are now level %d. The System is mildly impressed." % killer.sheet.level, &"system")
+		Events.level_up.emit(killer.sheet.level)
 	enemy.queue_free()
-	Events.hud_refresh.emit()
+	if killer.is_player:
+		Events.hud_refresh.emit()
 
 
 func _all_bosses_dead() -> bool:
@@ -296,10 +375,8 @@ func _resolve_enemies() -> void:
 				enemy.set_stun_visual(false)
 			continue  # seeing stars: no action this tick
 		EnemyAI.act(enemy, dungeon)
-		if GameState.character.hp <= 0:
-			state = State.LOCKED
-			Events.player_died.emit()
-			return
+		if state == State.LOCKED:
+			return  # a death (the player's) halted the world
 
 
 func _post_turn() -> void:

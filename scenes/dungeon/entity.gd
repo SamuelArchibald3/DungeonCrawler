@@ -21,6 +21,11 @@ var color := Color.WHITE
 var is_player := false
 var facing := Vector2i.DOWN
 
+## Crawler-only fields: the character sheet this body belongs to (null for
+## monsters/markers) and a backref to its roster record while REAL.
+var sheet: CharacterData
+var crawler_record: CrawlerRecord
+
 ## Enemy-only fields (null/unused for the player)
 var enemy_def: EnemyDef
 var hp := 0:
@@ -254,9 +259,13 @@ func health_bar_color() -> Color:
 	return _bar_fill.color if _bar_fill != null else Color()
 
 
+func is_crawler() -> bool:
+	return sheet != null
+
+
 func display_name() -> String:
-	if is_player:
-		return GameState.character.char_name
+	if sheet != null:
+		return sheet.char_name
 	if boss_name != "":
 		return boss_name
 	return enemy_def.display_name if enemy_def != null else "???"

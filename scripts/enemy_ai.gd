@@ -10,17 +10,22 @@ static func act(enemy: Entity, dungeon: Dungeon) -> void:
 	if enemy.turn_counter % def.move_every_n_turns != 0:
 		return  # slow enemies skip turns
 
-	var ppos: Vector2i = dungeon.player.grid_pos
+	var target := _nearest_crawler(enemy, dungeon)
+	if target == null:
+		return
+	var ppos: Vector2i = target.grid_pos
 	var delta := ppos - enemy.grid_pos
 
 	# A telegraphed strike resolves against the tile it aimed at — move away
-	# during the windup and it hits floor.
+	# during the windup and it hits floor. Whichever crawler stands there eats it.
 	if enemy.winding_up:
 		enemy.winding_up = false
 		enemy.set_telegraphing(false)
 		enemy.bump_toward(enemy.windup_target - enemy.grid_pos)
-		if ppos == enemy.windup_target and not dungeon.grid.is_safe(ppos):
-			_attack_player(enemy, dungeon)
+		var victim: Object = dungeon.grid.entity_at(enemy.windup_target)
+		if victim is Entity and (victim as Entity).is_crawler() \
+				and not dungeon.grid.is_safe(enemy.windup_target):
+			_attack_crawler(enemy, dungeon, victim as Entity)
 		else:
 			Events.msg("%s's crushing blow hits empty floor." % enemy.display_name(), &"combat")
 		return
@@ -35,7 +40,7 @@ static func act(enemy: Entity, dungeon: Dungeon) -> void:
 			return
 		if cheb_r <= def.attack_range and dungeon.grid.has_line_of_sight(enemy.grid_pos, ppos):
 			dungeon.show_projectile(enemy.grid_pos, ppos, enemy.color)
-			_attack_player(enemy, dungeon)
+			_attack_crawler(enemy, dungeon, target)
 			return
 		if cheb_r <= def.aggro_range:
 			_step_toward(enemy, dungeon, ppos)
@@ -50,7 +55,7 @@ static func act(enemy: Entity, dungeon: Dungeon) -> void:
 			enemy.set_telegraphing(true)
 			Events.msg("The %s winds up something enormous..." % enemy.display_name(), &"combat")
 			return
-		_attack_player(enemy, dungeon)
+		_attack_crawler(enemy, dungeon, target)
 		return
 
 	var cheb := maxi(absi(delta.x), absi(delta.y))
@@ -109,17 +114,47 @@ static func _try_step(enemy: Entity, dungeon: Dungeon, step: Vector2i) -> bool:
 	return false
 
 
+## Legacy wrapper (kept for tests): attack whichever crawler is nearest.
 static func _attack_player(enemy: Entity, dungeon: Dungeon) -> void:
-	var c: CharacterData = GameState.character
-	enemy.bump_toward(dungeon.player.grid_pos - enemy.grid_pos)
-	if Combat.try_dodge(c, GameState.rng):
-		Events.msg("You dodge the %s." % enemy.display_name(), &"combat")
+	_attack_crawler(enemy, dungeon, _nearest_crawler(enemy, dungeon))
+
+
+static func _attack_crawler(enemy: Entity, dungeon: Dungeon, target: Entity) -> void:
+	if target == null or target.sheet == null:
 		return
-	var dmg := Combat.enemy_attack_damage(enemy, GameState.floor_number, c)
-	c.hp = maxi(c.hp - dmg, 0)
-	Events.msg("%s hits you for %d." % [enemy.display_name(), dmg], &"combat")
-	if enemy.enemy_def.poison_chance > 0.0 and c.hp > 0 \
+	var sheet: CharacterData = target.sheet
+	enemy.bump_toward(target.grid_pos - enemy.grid_pos)
+	if Combat.try_dodge(sheet, GameState.rng):
+		if target.is_player:
+			Events.msg("You dodge the %s." % enemy.display_name(), &"combat")
+		return
+	var dmg := Combat.enemy_attack_damage(enemy, GameState.floor_number, sheet)
+	if target.is_player:
+		Events.msg("%s hits you for %d." % [enemy.display_name(), dmg], &"combat")
+	if enemy.enemy_def.poison_chance > 0.0 and sheet.hp - dmg > 0 \
 			and GameState.rng.randf() < enemy.enemy_def.poison_chance:
-		c.statuses[&"poison"] = { "power": 2, "ticks": 4 }
-		Events.msg("Venom seeps in. You are POISONED.", &"combat")
-	Events.hud_refresh.emit()
+		sheet.statuses[&"poison"] = { "power": 2, "ticks": 4 }
+		if target.is_player:
+			Events.msg("Venom seeps in. You are POISONED.", &"combat")
+	var record: CrawlerRecord = target.crawler_record
+	if record == null and target.is_player:
+		record = dungeon.turn_manager.player_record()
+	if record != null:
+		dungeon.turn_manager.damage_crawler(record, dmg, "killed by %s" % enemy.display_name())
+	else:
+		sheet.hp = maxi(sheet.hp - dmg, 0)
+
+
+## Enemies hunt whichever instantiated crawler is closest (ties: first in list).
+static func _nearest_crawler(enemy: Entity, dungeon: Dungeon) -> Entity:
+	var best: Entity = null
+	var best_dist := 1 << 30
+	for candidate: Entity in dungeon.real_crawler_entities:
+		if candidate == null or not is_instance_valid(candidate):
+			continue
+		var d := maxi(absi(candidate.grid_pos.x - enemy.grid_pos.x),
+			absi(candidate.grid_pos.y - enemy.grid_pos.y))
+		if d < best_dist:
+			best_dist = d
+			best = candidate
+	return best

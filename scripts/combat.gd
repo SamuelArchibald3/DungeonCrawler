@@ -5,8 +5,8 @@ extends RefCounted
 
 static func player_attack_damage(c: CharacterData, enemy: Entity, rng: RandomNumberGenerator) -> int:
 	var dmg := c.get_weapon_damage() + floori((c.get_stat(&"STR") - 8) / 2.0) + rng.randi_range(0, 2)
-	if GameState.amenities.has(&"meal"):
-		dmg += 1  # well fed, mildly lethal
+	if GameState.amenities.has(&"meal") and c == GameState.character:
+		dmg += 1  # well fed, mildly lethal (amenities are the player's)
 	if c.has_ability(&"backstab") and enemy.hp == enemy.max_hp:
 		dmg = floori(dmg * 1.5)
 	dmg -= enemy.enemy_def.defense
@@ -21,6 +21,13 @@ static func enemy_attack_damage(enemy: Entity, floor_num: int, c: CharacterData)
 		dmg += 2
 	if c.has_ability(&"thick_skin"):
 		dmg -= 1
+	return maxi(dmg, 1)
+
+
+## Crawler-vs-crawler melee (PvP): weapon + STR vs the defender's gear.
+static func crawler_vs_crawler_damage(attacker: CharacterData, defender: CharacterData, rng: RandomNumberGenerator) -> int:
+	var dmg := attacker.get_weapon_damage() + floori((attacker.get_stat(&"STR") - 8) / 2.0) + rng.randi_range(0, 2)
+	dmg -= defender.get_defense()
 	return maxi(dmg, 1)
 
 

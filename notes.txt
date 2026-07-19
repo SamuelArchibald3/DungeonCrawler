@@ -1,0 +1,11 @@
+get loot boxes instead of items (open in saferoom)
+stack health pots
+see full item names. add a column for level and rarity
+mobility options:
+sprint + stamina?
+dash?
+run faster from some items or dex stat?
+
+add Wolfenstein/doom like 3d graphics. still on a grid system
+
+make personal spaces and improve the upgrades you can buy more variety higher cost and better effects

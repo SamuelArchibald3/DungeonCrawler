@@ -13,7 +13,7 @@ func _init() -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed_value
 		var floor_num := (seed_value % 4) + 1
-		var fd = FloorGeneratorScript.generate(68, 44, floor_num, rng)
+		var fd = FloorGeneratorScript.generate(192, 128, floor_num, rng)
 
 		if not fd.grid.is_walkable(fd.spawn):
 			print("FAIL seed %d: spawn not walkable" % seed_value)
@@ -49,8 +49,40 @@ func _init() -> void:
 			print("FAIL seed %d: floor 3 spawn is not inside a saferoom" % seed_value)
 			failures += 1
 
-		if fd.zones.size() < 2 or fd.zones.size() > 4:
+		if fd.zones.size() < 4 or fd.zones.size() > 8:
 			print("FAIL seed %d: zone count %d out of range" % [seed_value, fd.zones.size()])
+			failures += 1
+
+		# Cohort invariants: 99 unique crawler spawns on plain floor tiles
+		# outside the spawn/shop/safe rooms; room graph fully connected
+		if fd.crawler_spawns.size() != 99:
+			print("FAIL seed %d: crawler spawn count %d != 99" % [seed_value, fd.crawler_spawns.size()])
+			failures += 1
+		var seen_crawler := {}
+		for pos in fd.crawler_spawns:
+			if fd.grid.get_tile(pos) != DungeonGridScript.FLOOR or seen_crawler.has(pos) \
+					or fd.rooms[0].has_point(pos) or fd.shop_room.has_point(pos) \
+					or fd.saferoom.has_point(pos):
+				print("FAIL seed %d: bad crawler spawn at %s" % [seed_value, pos])
+				failures += 1
+				break
+			seen_crawler[pos] = true
+		var visited_rooms := { 0: true }
+		var room_queue := [0]
+		while not room_queue.is_empty():
+			var current_room: int = room_queue.pop_front()
+			for neighbor in fd.room_graph[current_room]:
+				if not visited_rooms.has(neighbor):
+					visited_rooms[neighbor] = true
+					room_queue.append(neighbor)
+		if visited_rooms.size() != fd.rooms.size():
+			print("FAIL seed %d: room graph disconnected (%d/%d)" % [seed_value, visited_rooms.size(), fd.rooms.size()])
+			failures += 1
+		var expected_room_tiles := 0
+		for room in fd.rooms:
+			expected_room_tiles += room.get_area()
+		if fd.room_of.size() != expected_room_tiles:
+			print("FAIL seed %d: room_of incomplete (%d/%d)" % [seed_value, fd.room_of.size(), expected_room_tiles])
 			failures += 1
 		var zoned := 0
 		for zone_info in fd.zones:

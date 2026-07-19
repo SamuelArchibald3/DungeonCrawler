@@ -23,6 +23,7 @@ Achievements="*res://autoload/achievements.gd"
 Quests="*res://autoload/quests.gd"
 Fame="*res://autoload/fame.gd"
 SystemAnnouncer="*res://autoload/system_announcer.gd"
+Crawlers="*res://autoload/crawlers.gd"
 
 [display]
 

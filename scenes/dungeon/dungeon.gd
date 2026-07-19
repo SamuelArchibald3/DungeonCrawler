@@ -9,8 +9,8 @@ signal shop_requested(shopkeeper: Shopkeeper)
 signal guide_requested
 
 const TILE := Entity.TILE
-const FLOOR_W := 68
-const FLOOR_H := 44
+const FLOOR_W := 192
+const FLOOR_H := 128
 
 ## Subtle per-zone floor tints (atlas 4..7) and their bright map equivalents
 const ZONE_FLOOR_COLORS: Array[Color] = [
@@ -69,6 +69,7 @@ func _ready() -> void:
 	var spawn_zone := zone_at(floor_data.spawn)
 	if spawn_zone != -1:
 		zone_visited[spawn_zone] = true  # no announcement for home turf
+	Crawlers.assign_floor_positions(floor_data)
 
 	turn_manager = TurnManager.new()
 	turn_manager.dungeon = self
@@ -148,7 +149,7 @@ func _spawn_player() -> void:
 	real_crawler_entities.append(player)
 
 	var cam := Camera2D.new()
-	cam.zoom = Vector2(2.5, 2.5)
+	cam.zoom = Vector2(2.0, 2.0)
 	cam.position_smoothing_enabled = true
 	cam.position_smoothing_speed = 8.0
 	cam.offset = Vector2(TILE / 2.0, TILE / 2.0)

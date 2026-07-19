@@ -10,6 +10,8 @@ enum State { AWAITING_INPUT, RESOLVING, LOCKED }
 ## player may act once per PLAYER_ACTION_SECONDS via held keys.
 const WORLD_TICK_SECONDS := 0.45
 const PLAYER_ACTION_SECONDS := 0.28
+## Entities beyond this Chebyshev distance from the player lie dormant
+const ACTIVE_RADIUS := 22
 
 const DIRECTION_ACTIONS := {
 	"move_up": Vector2i.UP,
@@ -27,10 +29,12 @@ var _world_accum := 0.0
 var _player_rec: CrawlerRecord
 
 
-## The player's roster record (roster ownership moves to a Crawlers autoload
-## in a later milestone; until then TurnManager mints it per floor).
+## The player's roster record (roster[0] when the cohort exists; a local
+## mint keeps headless script-mode tests working without autoload state).
 func player_record() -> CrawlerRecord:
-	if _player_rec == null:
+	if Crawlers.roster.size() > 0:
+		_player_rec = Crawlers.roster[0]
+	elif _player_rec == null:
 		_player_rec = CrawlerRecord.make(0, GameState.character)
 		_player_rec.is_player = true
 		_player_rec.tier = CrawlerRecord.Tier.REAL
@@ -365,9 +369,12 @@ func _all_bosses_dead() -> bool:
 
 
 func _resolve_enemies() -> void:
+	var ppos: Vector2i = dungeon.player.grid_pos
 	for enemy in dungeon.enemies.duplicate():
 		if enemy.hp <= 0:
 			continue
+		if maxi(absi(enemy.grid_pos.x - ppos.x), absi(enemy.grid_pos.y - ppos.y)) > ACTIVE_RADIUS:
+			continue  # dormant beyond the activity bubble
 		if enemy.statuses.get(&"stun", 0) > 0:
 			enemy.statuses[&"stun"] -= 1
 			if enemy.statuses[&"stun"] <= 0:

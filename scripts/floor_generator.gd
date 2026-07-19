@@ -17,14 +17,17 @@ class FloorData:
 	var box_spawns: Array = []  # [{ "tier": int, "pos": Vector2i }]
 	var zones: Array = []  # [{ "rooms": Array[Rect2i] }] — neighbourhoods
 	var zone_of := {}  # Vector2i -> zone index, for every room tile
+	var crawler_spawns: Array[Vector2i] = []  # NPC cohort spawn points
+	var room_of := {}   # Vector2i -> room index, for every room tile
+	var room_graph := {}  # room index -> Array[int] (corridor-chain adjacency)
 
 
-const MAX_ROOM_ATTEMPTS := 28
+const MAX_ROOM_ATTEMPTS := 220
 const ROOM_MIN := 4
-const ROOM_MAX := 9
+const ROOM_MAX := 10
 
 
-static func generate(width: int, height: int, floor_num: int, rng: RandomNumberGenerator) -> FloorData:
+static func generate(width: int, height: int, floor_num: int, rng: RandomNumberGenerator, crawler_spawn_count: int = 99) -> FloorData:
 	var fd := FloorData.new()
 	fd.grid = DungeonGrid.new(width, height)
 
@@ -50,7 +53,10 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 			for rx in range(room.position.x, room.end.x):
 				fd.grid.set_tile(Vector2i(rx, ry), DungeonGrid.FLOOR)
 
-	# 3. Connect consecutive room centers with L-corridors
+	# 3. Connect consecutive room centers with L-corridors; record the chain
+	# as the room graph (abstract crawlers path along it)
+	for i in fd.rooms.size():
+		fd.room_graph[i] = [] as Array[int]
 	for i in range(1, fd.rooms.size()):
 		var a := fd.rooms[i - 1].get_center()
 		var b := fd.rooms[i].get_center()
@@ -60,6 +66,15 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 		else:
 			_carve_v(fd.grid, a.y, b.y, a.x)
 			_carve_h(fd.grid, a.x, b.x, b.y)
+		fd.room_graph[i - 1].append(i)
+		fd.room_graph[i].append(i - 1)
+
+	# 3b. Tile -> room lookup for spawn assignment and abstract pathing
+	for i in fd.rooms.size():
+		var room := fd.rooms[i]
+		for ry in range(room.position.y, room.end.y):
+			for rx in range(room.position.x, room.end.x):
+				fd.room_of[Vector2i(rx, ry)] = i
 
 	# 4. Spawn in room 0; stairs in the room farthest from it
 	fd.spawn = fd.rooms[0].get_center()
@@ -126,7 +141,7 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 	_build_zones(fd, rng)
 
 	# 5. Enemy + loot box placement on random floor tiles (not room 0, not near spawn)
-	var enemy_count := 8 + floor_num * 2
+	var enemy_count := 70 + floor_num * 15
 	var taken := { fd.spawn: true, fd.stairs: true }
 	if fd.stairs_free != Vector2i(-1, -1):
 		taken[fd.stairs_free] = true
@@ -136,12 +151,24 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 			fd.enemy_spawns.append(pos)
 			taken[pos] = true
 
-	var box_count := rng.randi_range(3, 5)
+	var box_count := rng.randi_range(24, 36)
 	for i in box_count:
 		var pos := _random_floor_tile(fd, rng, taken, 3)
 		if pos != Vector2i(-1, -1):
 			fd.box_spawns.append({ "tier": _roll_box_tier(floor_num, rng), "pos": pos })
 			taken[pos] = true
+
+	# 6. Cohort spawn points, spread across the floor (relaxing the minimum
+	# spawn distance if placement gets tight — size must always be met)
+	for min_dist in [10, 6, 3]:
+		while fd.crawler_spawns.size() < crawler_spawn_count:
+			var pos := _random_floor_tile(fd, rng, taken, min_dist)
+			if pos == Vector2i(-1, -1):
+				break
+			fd.crawler_spawns.append(pos)
+			taken[pos] = true
+		if fd.crawler_spawns.size() >= crawler_spawn_count:
+			break
 
 	return fd
 
@@ -149,7 +176,7 @@ static func generate(width: int, height: int, floor_num: int, rng: RandomNumberG
 ## Neighbourhoods: farthest-point sampling picks spread-out seed rooms, then
 ## every room joins its nearest seed. Guarantees 2-4 contiguous-ish districts.
 static func _build_zones(fd: FloorData, rng: RandomNumberGenerator) -> void:
-	var k := clampi(fd.rooms.size() / 4, 2, 4)
+	var k := clampi(fd.rooms.size() / 12, 4, 8)
 	var seeds: Array[int] = [rng.randi_range(0, fd.rooms.size() - 1)]
 	while seeds.size() < k:
 		var best := -1

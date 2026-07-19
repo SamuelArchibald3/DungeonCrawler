@@ -88,6 +88,7 @@ func _ready() -> void:
 		start_run(CharGenerator.random_character())
 	elif OS.get_cmdline_user_args().has("--screenshots"):
 		GameState.realtime_mode = false
+		Crawlers.spawn_count_override = 0
 		_shot_mode = true
 		start_run(CharGenerator.random_character())
 		# Some sample loot so the inventory screenshot isn't empty
@@ -115,6 +116,7 @@ func _ready() -> void:
 		_load_floor()
 	elif OS.get_cmdline_user_args().has("--systest"):
 		GameState.realtime_mode = false  # deterministic; realtime tested explicitly
+		Crawlers.spawn_count_override = 0  # legacy sections assume a lone player
 		start_run(CharGenerator.random_character())
 		add_child(load("res://tests/systest.gd").new())
 	else:
@@ -132,6 +134,7 @@ func show_char_create() -> void:
 func start_run(character: CharacterData) -> void:
 	char_create_screen.visible = false
 	GameState.new_run(character)
+	Crawlers.start_cohort(character)
 	hud.visible = true
 	message_log.visible = true
 	_load_floor()

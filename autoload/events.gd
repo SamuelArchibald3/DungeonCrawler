@@ -26,6 +26,12 @@ signal achievement_unlocked(id: StringName, title: String, description: String)
 signal announce(title: String, body: String)
 signal viewers_changed(count: int)
 
+## Cohort: NPC crawler happenings (kinds: died / pvp_kill / descended /
+## killed_boss / level_up / emote) and floor lifecycle
+signal crawler_event(kind: StringName, crawler: CrawlerRecord, data: Dictionary)
+signal cohort_changed
+signal floor_state_changed(state: int)
+
 ## Message categories double as log colors: &"combat", &"loot", &"system", &"info"
 
 

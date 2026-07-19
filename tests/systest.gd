@@ -178,7 +178,7 @@ func _run() -> void:
 
 	# --- Neighbourhoods: zones, per-zone enemies, bosses, map reveal ---
 	var fd = dungeon.floor_data
-	check(fd.zones.size() >= 2 and fd.zones.size() <= 4, "floor has 2-4 neighbourhoods (%d)" % fd.zones.size())
+	check(fd.zones.size() >= 4 and fd.zones.size() <= 8, "floor has 4-8 neighbourhoods (%d)" % fd.zones.size())
 	var zoned_rooms := 0
 	for zone_info: Dictionary in fd.zones:
 		zoned_rooms += zone_info["rooms"].size()
@@ -529,7 +529,7 @@ func _run() -> void:
 	check(after_first_crush - c.hp > c.max_hp - after_first_crush, "crush damage escalates per turn")
 	GameState.floor_number = 3
 	GameState.start_floor_timer()
-	check(GameState.floor_turns_left == 400, "floor 3 budget is 340 + 2*30 (%d)" % GameState.floor_turns_left)
+	check(GameState.floor_turns_left == 1020, "floor 3 budget is 900 + 2*60 (%d)" % GameState.floor_turns_left)
 	check(GameState.collapse_ticks == 0, "descending resets collapse state")
 	c.hp = c.max_hp
 

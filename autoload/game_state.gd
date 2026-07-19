@@ -1,12 +1,16 @@
 extends Node
 ## The only mutable global: state for the current run.
 
-const FLOOR_TURN_BUDGET := 340  # tuned for 68x44 floors
-const FLOOR_TURN_BONUS_PER_FLOOR := 30
+const FLOOR_TURN_BUDGET := 900  # tuned for 192x128 cohort floors
+const FLOOR_TURN_BONUS_PER_FLOOR := 60
+const GRACE_TICKS := 25  # collapse crush window before the floor force-ends
 
 var character: CharacterData
 var floor_number: int = 1
 var rng := RandomNumberGenerator.new()
+## Separate stream for the abstract crawler simulation, so player-side RNG
+## consumption never perturbs the cohort (and sim tests stay deterministic).
+var sim_rng := RandomNumberGenerator.new()
 var race_class_done := false
 var run_seed: int = 0
 
@@ -47,3 +51,4 @@ func new_run(new_character: CharacterData) -> void:
 func start_floor_timer() -> void:
 	floor_turns_left = FLOOR_TURN_BUDGET + (floor_number - 1) * FLOOR_TURN_BONUS_PER_FLOOR
 	collapse_ticks = 0
+	sim_rng.seed = run_seed + floor_number * 7919

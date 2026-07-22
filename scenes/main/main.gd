@@ -23,6 +23,8 @@ var _autorun := false
 var _autorun_frames := 0
 var _autorun_rng := RandomNumberGenerator.new()
 var _shot_mode := false
+var _cohort_shot := false
+var _cohort_frames := 0
 
 
 func _ready() -> void:
@@ -90,6 +92,10 @@ func _ready() -> void:
 	if _autorun:
 		GameState.realtime_mode = false  # chaos test drives discrete turns
 		_autorun_rng.randomize()
+		start_run(CharGenerator.random_character())
+	elif OS.get_cmdline_user_args().has("--cohortshot"):
+		GameState.realtime_mode = false
+		_cohort_shot = true
 		start_run(CharGenerator.random_character())
 	elif OS.get_cmdline_user_args().has("--screenshots"):
 		GameState.realtime_mode = false
@@ -277,6 +283,9 @@ func _process(_delta: float) -> void:
 	if _shot_mode:
 		_shot_tick()
 		return
+	if _cohort_shot:
+		_cohort_shot_tick()
+		return
 	if not _autorun:
 		return
 	_autorun_frames += 1
@@ -383,3 +392,73 @@ func _capture(shot_name: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.save_png("res://screenshots/%s.png" % shot_name)
 	print("[screenshot] saved %s" % shot_name)
+
+
+## Drives the cohort screenshots: real crawlers on the floor, then the lounge.
+func _cohort_shot_tick() -> void:
+	_cohort_frames += 1
+	match _cohort_frames:
+		30:
+			_plant_cohort_near_player()
+			Events.hud_refresh.emit()
+			Events.cohort_changed.emit()
+		45:
+			_capture("cohort_gameplay")
+		46:
+			if is_instance_valid(dungeon):
+				_on_descend()  # into the Stairwell Lounge
+			_seed_cohort_feed()
+		70:
+			_capture("cohort_lounge")
+		72:
+			get_tree().quit(0)
+
+
+## Reposition a handful of abstract crawlers right next to the player and
+## promote them, one of each disposition, so the shot shows the cohort.
+func _plant_cohort_near_player() -> void:
+	if not is_instance_valid(dungeon) or dungeon.player == null:
+		return
+	var dispositions := [
+		CrawlerRecord.Disposition.FRIENDLY, CrawlerRecord.Disposition.WARY,
+		CrawlerRecord.Disposition.HOSTILE, CrawlerRecord.Disposition.WARY,
+		CrawlerRecord.Disposition.FRIENDLY, CrawlerRecord.Disposition.HOSTILE,
+	]
+	var records := Crawlers.npc_records()
+	var ri := 0
+	var placed := 0
+	for radius in range(2, 5):
+		for dy in range(-radius, radius + 1):
+			for dx in range(-radius, radius + 1):
+				if placed >= dispositions.size():
+					break
+				if maxi(absi(dx), absi(dy)) != radius:
+					continue
+				var pos: Vector2i = dungeon.player.grid_pos + Vector2i(dx, dy)
+				if not dungeon.grid.is_open(pos):
+					continue
+				while ri < records.size() and records[ri].tier == CrawlerRecord.Tier.REAL:
+					ri += 1
+				if ri >= records.size():
+					return
+				var cr: CrawlerRecord = records[ri]
+				ri += 1
+				cr.disposition = dispositions[placed]
+				cr.tier = CrawlerRecord.Tier.ABSTRACT
+				cr.pos = pos
+				dungeon.promote_crawler(cr)
+				placed += 1
+
+
+## Kill and descend a few crawlers so the lounge feed and counters have life.
+func _seed_cohort_feed() -> void:
+	var records := Crawlers.npc_records()
+	var acted := 0
+	for cr in records:
+		if acted >= 12 or not cr.alive:
+			continue
+		if acted % 4 == 0:
+			Crawlers.mark_descended(cr)
+		else:
+			Crawlers.kill(cr, "the local wildlife")
+		acted += 1

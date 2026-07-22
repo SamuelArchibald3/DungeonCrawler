@@ -927,6 +927,54 @@ func _run() -> void:
 		dungeon.player.set_grid_pos(cohort_home, false)
 	c.hp = c.max_hp
 
+	# --- Abstract sim: tiering + macro-steps through the live driver ---
+	var far_room := Vector2i(-1, -1)
+	for room: Rect2i in fd.rooms:
+		var d := maxi(absi(room.get_center().x - dungeon.player.grid_pos.x),
+			absi(room.get_center().y - dungeon.player.grid_pos.y))
+		if d > TurnManager.DEMOTE_RADIUS + 5:
+			far_room = room.get_center()
+			break
+	check(far_room != Vector2i(-1, -1), "found a room outside the activity bubble")
+	if far_room != Vector2i(-1, -1):
+		var distant := CrawlerRecord.make(950, CharGenerator.random_character())
+		distant.disposition = CrawlerRecord.Disposition.WARY
+		distant.pos = far_room
+		distant.room = fd.room_of.get(far_room, 0)
+		Crawlers.roster.append(distant)
+
+		dungeon.turn_manager._advance_cohort()
+		check(distant.tier == CrawlerRecord.Tier.ABSTRACT and distant.entity == null,
+			"distant crawler stays abstract (no body)")
+
+		# Force many macro-steps: an abstract crawler should make progress
+		# (move rooms, fight, loot, or head for stairs) without a real entity
+		var start_pos := distant.pos
+		var moved := false
+		for i in 200:
+			dungeon.turn_manager._advance_cohort()
+			if distant.pos != start_pos or not distant.alive or distant.descended:
+				moved = true
+				break
+		check(moved, "abstract crawler advances through the sim")
+
+		# Promotion when the player walks into its bubble
+		if distant.alive and not distant.descended:
+			var near: Vector2i = dungeon._nearest_open_tile(distant.pos + Vector2i(2, 0))
+			if near != Vector2i(-1, -1):
+				var player_stash: Vector2i = dungeon.player.grid_pos
+				dungeon.grid.move_entity(dungeon.player, player_stash, near)
+				dungeon.player.set_grid_pos(near, false)
+				dungeon.turn_manager._update_tiers()
+				check(distant.tier == CrawlerRecord.Tier.REAL and distant.entity != null,
+					"crawler promotes when the player approaches")
+				dungeon.grid.move_entity(dungeon.player, dungeon.player.grid_pos, player_stash)
+				dungeon.player.set_grid_pos(player_stash, false)
+			dungeon.demote_crawler(distant)
+		Crawlers.roster.erase(distant)
+		dungeon.turn_manager._sim_floor = -1  # rebuild ctx cleanly for later checks
+	c.hp = c.max_hp
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

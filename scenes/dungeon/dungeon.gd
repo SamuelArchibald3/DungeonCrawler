@@ -356,6 +356,41 @@ func demote_crawler(cr: CrawlerRecord) -> void:
 	cr.tier = CrawlerRecord.Tier.ABSTRACT
 
 
+## Abstract-sim resource consumption: quietly remove one dormant (far from
+## the player) enemy or box in a zone so the physical floor tracks the sim.
+## Best-effort — if nothing dormant remains, the sim's own pool count still
+## governs future rolls.
+func take_dormant_enemy(zone: int) -> void:
+	var ppos: Vector2i = player.grid_pos if player != null else floor_data.spawn
+	for enemy in enemies:
+		if enemy == null or not is_instance_valid(enemy) or enemy.hp <= 0 \
+				or enemy.is_boss or enemy.is_borough:
+			continue
+		if floor_data.zone_of.get(enemy.grid_pos, -1) != zone:
+			continue
+		if maxi(absi(enemy.grid_pos.x - ppos.x), absi(enemy.grid_pos.y - ppos.y)) <= TurnManager.ACTIVE_RADIUS:
+			continue  # only reap the dormant ones the player can't see
+		grid.remove_entity(enemy.grid_pos)
+		enemies.erase(enemy)
+		enemy.queue_free()
+		return
+
+
+func take_dormant_box(zone: int) -> void:
+	var ppos: Vector2i = player.grid_pos if player != null else floor_data.spawn
+	for child in _entities_root.get_children():
+		if not (child is LootBox):
+			continue
+		var box := child as LootBox
+		if floor_data.zone_of.get(box.grid_pos, -1) != zone:
+			continue
+		if maxi(absi(box.grid_pos.x - ppos.x), absi(box.grid_pos.y - ppos.y)) <= TurnManager.ACTIVE_RADIUS:
+			continue
+		grid.remove_entity(box.grid_pos)
+		box.queue_free()
+		return
+
+
 func _nearest_open_tile(around: Vector2i) -> Vector2i:
 	for radius in 4:
 		for dy in range(-radius, radius + 1):

@@ -28,6 +28,14 @@ var _player_cooldown := 0.0
 var _world_accum := 0.0
 var _player_rec: CrawlerRecord
 
+## Distance beyond which a real crawler folds back to abstract (hysteresis
+## against ACTIVE_RADIUS so promotion/demotion doesn't thrash at the edge).
+const DEMOTE_RADIUS := 27
+
+var _sim_ctx := {}
+var _sim_floor := -1
+var _world_tick_count := 0
+
 
 ## The player's roster record (roster[0] when the cohort exists; a local
 ## mint keeps headless script-mode tests working without autoload state).
@@ -408,8 +416,71 @@ func _resolve_crawlers() -> void:
 			return
 
 
+## Advance the distant cohort: retier crawlers around the player, then run
+## staggered abstract macro-steps for those still out of the bubble.
+func _advance_cohort() -> void:
+	if Crawlers.roster.size() <= 1:
+		return
+	_world_tick_count += 1
+	_update_tiers()
+	_ensure_sim_ctx()
+	_sim_ctx["turns_left"] = GameState.floor_turns_left
+	for cr in Crawlers.npc_records():
+		if not cr.alive or cr.descended or cr.tier == CrawlerRecord.Tier.REAL:
+			continue
+		if (_world_tick_count + cr.id) % CrawlerSim.SIM_PERIOD != 0:
+			continue
+		for ev in CrawlerSim.macro_step(cr, _sim_ctx):
+			_apply_sim_event(ev)
+
+
+## Promote abstract crawlers that wander into the bubble; demote real ones
+## that leave it.
+func _update_tiers() -> void:
+	var ppos: Vector2i = dungeon.player.grid_pos
+	for cr in Crawlers.npc_records():
+		if not cr.alive or cr.descended:
+			continue
+		if cr.tier == CrawlerRecord.Tier.REAL:
+			if cr.entity == null or not is_instance_valid(cr.entity):
+				continue
+			var d := maxi(absi(cr.entity.grid_pos.x - ppos.x), absi(cr.entity.grid_pos.y - ppos.y))
+			if d > DEMOTE_RADIUS:
+				dungeon.demote_crawler(cr)
+		else:
+			var d := maxi(absi(cr.pos.x - ppos.x), absi(cr.pos.y - ppos.y))
+			if d <= ACTIVE_RADIUS:
+				dungeon.promote_crawler(cr)
+
+
+func _ensure_sim_ctx() -> void:
+	if _sim_floor == GameState.floor_number and not _sim_ctx.is_empty():
+		return
+	_sim_ctx = CrawlerSim.build_context(dungeon.floor_data, GameState.floor_number,
+		GameState.sim_rng, Crawlers.roster, GameState.floor_turns_left)
+	_sim_floor = GameState.floor_number
+
+
+func _apply_sim_event(ev: Dictionary) -> void:
+	match ev["kind"]:
+		&"died":
+			Crawlers.kill(ev["cr"], ev.get("cause", "the dungeon"))
+		&"descended":
+			Crawlers.mark_descended(ev["cr"])
+		&"pvp":
+			var killer: CrawlerRecord = ev["killer"]
+			Events.crawler_event.emit(&"pvp_kill", killer,
+				{ "summary": "%s murdered %s" % [killer.sheet.char_name, ev["cr"].sheet.char_name] })
+			Crawlers.kill(ev["cr"], "slain by %s" % killer.sheet.char_name, killer)
+		&"enemy_killed":
+			dungeon.take_dormant_enemy(ev["zone"])
+		&"looted":
+			dungeon.take_dormant_box(ev["zone"])
+
+
 func _post_turn() -> void:
 	_resolve_crawlers()
+	_advance_cohort()
 	var c: CharacterData = GameState.character
 	# Tick active-ability cooldowns
 	for id in c.ability_cooldowns.keys():

@@ -82,6 +82,26 @@ func assign_floor_positions(fd: FloorGenerator.FloorData) -> void:
 			cr.room = 0
 
 
+## The shared floor clock hit zero: open the grace window before the floor
+## force-ends.
+func begin_grace() -> void:
+	if floor_state != FloorState.ACTIVE:
+		return
+	floor_state = FloorState.GRACE
+	grace_ticks_left = GameState.GRACE_TICKS
+	Events.floor_state_changed.emit(floor_state)
+
+
+func end_floor() -> void:
+	floor_state = FloorState.ENDED
+	Events.floor_state_changed.emit(floor_state)
+	Events.cohort_changed.emit()
+
+
+func player_record() -> CrawlerRecord:
+	return roster[0] if roster.size() > 0 else null
+
+
 func alive_count() -> int:
 	var count := 0
 	for cr in roster:

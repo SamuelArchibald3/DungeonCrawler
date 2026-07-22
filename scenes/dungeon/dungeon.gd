@@ -341,6 +341,20 @@ func promote_crawler(cr: CrawlerRecord) -> void:
 	real_crawler_entities.append(body)
 
 
+## The player has taken the stairs early: fold every real crawler back to
+## abstract, pull the player body off the grid, and hide the floor behind the
+## waiting room. The abstract cohort keeps playing out via spectate steps.
+func enter_spectate() -> void:
+	for cr in Crawlers.real_records():
+		if not cr.is_player:
+			demote_crawler(cr)
+	if player != null and is_instance_valid(player):
+		grid.remove_entity(player.grid_pos)
+		real_crawler_entities.erase(player)
+		player.visible = false
+	visible = false
+
+
 ## Fold a real crawler back into its abstract record.
 func demote_crawler(cr: CrawlerRecord) -> void:
 	if cr.tier != CrawlerRecord.Tier.REAL or cr.entity == null:

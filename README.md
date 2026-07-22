@@ -1,8 +1,9 @@
 # Dungeon Crawler (working title)
 
-A single-player, turn-based roguelike RPG prototype inspired by *Dungeon Crawler
-Carl* — you play as one of the other crawlers, descending the dungeon in
-parallel with Carl (who exists only in snarky news tickers). Built in Godot 4.6.
+A turn-based / real-time roguelike RPG prototype inspired by *Dungeon Crawler
+Carl* — you play as one of ~100 crawlers descending the same dungeon at the
+same time, racing a shared floor clock in a battle-royale cohort (Carl himself
+exists only in snarky news tickers). Built in Godot 4.6.
 
 > **IP note:** fan prototype for personal use. Before any public or commercial
 > release, re-theme names and flavor text (all of it lives in
@@ -47,6 +48,23 @@ shopkeeper** (golden B; CHA gets you discounts) → rest in teal **saferooms**
 floor 3 and get your **permanent biological rebrand** in the spawn saferoom
 (pick 1 of 3 races, then 1 of 3 classes, each granting stats + an ability) →
 die → new crawler. Floors past 4 are a soft "you win, keep going" zone.
+
+### The cohort (battle royale)
+
+~100 crawlers share each giant floor. Fellow crawlers appear as colored `@`s
+with their own dispositions — most are **wary** (keep their distance), some
+**friendly** (they wave), a few **hostile** (player-killers). They fight
+monsters, loot, level up, and die just like you; the HUD shows how many are
+still alive and how many have already descended, and a kill feed narrates the
+carnage. Distant crawlers are simulated abstractly and become real entities as
+you approach.
+
+**One floor at a time.** The whole cohort crawls the same floor together. When
+the timer expires, a short **grace** window of ceiling-crush begins, then the
+floor *closes* — everyone who hasn't reached a stairwell dies, saferoom or not.
+Take the stairs early and you're frozen in the **Stairwell Lounge**, watching
+the floor above play out (fast) until it ends, then dropping to the next floor
+with the survivors. Die and your **final placement** (#N of 100) is your score.
 
 ## Architecture notes
 

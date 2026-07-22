@@ -496,11 +496,13 @@ func _run() -> void:
 		dungeon.turn_manager._post_turn()
 		check(c.hp > hp_before_regen, "saferoom regenerates HP each turn")
 
-		GameState.floor_turns_left = 0
+		Crawlers.floor_state = Crawlers.FloorState.GRACE
+		Crawlers.grace_ticks_left = 10
 		GameState.collapse_ticks = 0
 		var hp_before_crush: int = c.hp
 		dungeon.turn_manager._post_turn()
-		check(c.hp >= hp_before_crush, "saferoom blocks collapse crush damage")
+		check(c.hp >= hp_before_crush, "saferoom shields from grace crush")
+		Crawlers.floor_state = Crawlers.FloorState.ACTIVE
 
 		var lurker := Entity.make_enemy(EnemyDef.all()[0], lurk_pos, 1)
 		dungeon.grid.place_entity(lurker, lurk_pos)
@@ -515,22 +517,77 @@ func _run() -> void:
 		dungeon.player.set_grid_pos(return_pos, false)
 		c.hp = c.max_hp
 
-	# --- Floor timer: ticks down, collapse deals escalating damage ---
+	# --- Floor lifecycle: ACTIVE countdown -> GRACE crush -> forced end ---
+	Crawlers.floor_state = Crawlers.FloorState.ACTIVE
 	GameState.floor_turns_left = 12
 	GameState.collapse_ticks = 0
-	dungeon.turn_manager._post_turn()
-	check(GameState.floor_turns_left == 11, "floor timer ticks down each turn")
 	c.hp = c.max_hp
+	dungeon.turn_manager._post_turn()
+	check(GameState.floor_turns_left == 11, "floor timer ticks down in the active phase")
+
 	GameState.floor_turns_left = 0
 	dungeon.turn_manager._post_turn()
-	var after_first_crush: int = c.hp
-	check(after_first_crush < c.max_hp, "collapsed floor deals crush damage")
+	check(Crawlers.floor_state == Crawlers.FloorState.GRACE, "timer expiry opens the grace window")
+
+	c.hp = c.max_hp
+	Crawlers.grace_ticks_left = 10
+	GameState.collapse_ticks = 0
 	dungeon.turn_manager._post_turn()
-	check(after_first_crush - c.hp > c.max_hp - after_first_crush, "crush damage escalates per turn")
+	var g1: int = c.max_hp - c.hp
+	dungeon.turn_manager._post_turn()
+	var g2: int = (c.max_hp - c.hp) - g1
+	check(g1 > 0 and g2 > g1, "grace crush escalates each tick (%d then %d)" % [g1, g2])
+
+	# Floor end kills the non-descended player even in a saferoom (loophole fix)
+	c.hp = c.max_hp
+	Crawlers.grace_ticks_left = 1
+	Crawlers.player_record().descended = false
+	Events.player_died.disconnect(main._on_player_died)  # don't tear down the dungeon mid-suite
+	dungeon.turn_manager.state = TurnManager.State.RESOLVING
+	dungeon.turn_manager._tick_floor_timer(c)
+	check(Crawlers.floor_state == Crawlers.FloorState.ENDED, "grace expiry ends the floor")
+	check(dungeon.turn_manager.state == TurnManager.State.LOCKED, "floor end kills the non-descended player")
+	Events.player_died.connect(main._on_player_died)
+
+	# Reset lifecycle for the remaining checks
+	Crawlers.floor_state = Crawlers.FloorState.ACTIVE
+	dungeon.turn_manager.state = TurnManager.State.AWAITING_INPUT
 	GameState.floor_number = 3
 	GameState.start_floor_timer()
 	check(GameState.floor_turns_left == 1020, "floor 3 budget is 900 + 2*60 (%d)" % GameState.floor_turns_left)
-	check(GameState.collapse_ticks == 0, "descending resets collapse state")
+	check(GameState.collapse_ticks == 0, "start_floor_timer resets collapse state")
+	c.hp = c.max_hp
+
+	# --- Force-end: stragglers die, the descended survive to next floor ---
+	var straggler := CrawlerRecord.make(970, CharGenerator.random_character())
+	var escaped := CrawlerRecord.make(971, CharGenerator.random_character())
+	escaped.descended = true
+	Crawlers.roster.append(straggler)
+	Crawlers.roster.append(escaped)
+	Crawlers.floor_state = Crawlers.FloorState.GRACE
+	Crawlers.player_record().descended = true  # player is safely in the lounge
+	Events.player_died.disconnect(main._on_player_died)
+	dungeon.turn_manager.spectate = true
+	dungeon.turn_manager.state = TurnManager.State.AWAITING_INPUT
+	dungeon.turn_manager._force_end_floor(c)
+	check(not straggler.alive, "force-end kills a non-descended crawler")
+	check(escaped.alive, "a descended crawler survives the floor end")
+	check(Crawlers.floor_state == Crawlers.FloorState.ENDED, "force-end marks the floor ended")
+	check(dungeon.turn_manager.state != TurnManager.State.LOCKED, "a descended player survives the floor end")
+
+	# Survivor carry-over: begin_floor keeps the living, resets their flags
+	var alive_after_end: int = Crawlers.alive_count()
+	Crawlers.begin_floor()
+	check(Crawlers.alive_count() == alive_after_end, "begin_floor conserves the survivors")
+	check(not escaped.descended, "begin_floor clears descended flags for the new floor")
+	check(escaped.tier == CrawlerRecord.Tier.ABSTRACT, "survivors start the next floor abstract")
+
+	dungeon.turn_manager.spectate = false
+	Events.player_died.connect(main._on_player_died)
+	Crawlers.player_record().descended = false
+	Crawlers.roster.erase(straggler)
+	Crawlers.roster.erase(escaped)
+	Crawlers.floor_state = Crawlers.FloorState.ACTIVE
 	c.hp = c.max_hp
 
 	# --- Ticked real-time mode: world acts without input, player rate-limited ---

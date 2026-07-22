@@ -41,6 +41,8 @@ func _on_crawler_event(kind: StringName, crawler: CrawlerRecord, data: Dictionar
 		&"pvp_kill":
 			_text.append_text("[color=#e05050]Crawler-on-crawler violence: %s. The System approves.[/color]\n" % str(data.get("summary", "")))
 		&"descended":
+			if crawler.is_player:
+				return  # the player gets their own descent message
 			_text.append_text("[color=#909090]Crawler %s has taken the stairs. %d below.[/color]\n" % [
 				crawler.sheet.char_name, Crawlers.descended_count()])
 		&"emote":

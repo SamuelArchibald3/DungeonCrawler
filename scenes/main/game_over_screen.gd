@@ -58,6 +58,9 @@ func open() -> void:
 		lines += "\nBest loot: %s (%s)" % [GameState.best_item_name, ItemData.RARITY_NAMES[GameState.best_item_rarity]]
 	if Achievements.run_unlocks > 0:
 		lines += "\nAchievements earned this run: %d" % Achievements.run_unlocks
+	if Crawlers.roster.size() > 1:
+		lines += "\nFINAL PLACEMENT: #%d of %d crawlers" % [
+			Crawlers.placement(Crawlers.player_record()), Crawlers.roster.size()]
 	_summary.text = lines
 	visible = true
 

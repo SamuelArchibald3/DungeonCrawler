@@ -12,6 +12,7 @@ var shop_screen: ShopScreen
 var guide_screen: GuideScreen
 var map_screen: MapScreen
 var achievements_screen: AchievementsScreen
+var waiting_room_screen: WaitingRoomScreen
 var notification_box: NotificationBox
 var race_class_screen: RaceClassScreen
 var game_over_screen: GameOverScreen
@@ -62,6 +63,10 @@ func _ready() -> void:
 	achievements_screen = AchievementsScreen.new()
 	achievements_screen.closed.connect(_on_modal_closed)
 	ui_layer.add_child(achievements_screen)
+
+	waiting_room_screen = WaitingRoomScreen.new()
+	waiting_room_screen.continue_pressed.connect(_on_waiting_continue)
+	ui_layer.add_child(waiting_room_screen)
 
 	race_class_screen = RaceClassScreen.new()
 	race_class_screen.done.connect(_on_race_class_done)
@@ -162,13 +167,32 @@ func _load_floor() -> void:
 
 func _on_descend() -> void:
 	Events.descended.emit(GameState.floor_turns_left)
+	# The whole cohort shares one floor: descending early doesn't advance the
+	# floor — it drops you into the waiting room while the floor above finishes.
+	Crawlers.mark_descended(Crawlers.player_record())
+	Events.msg("You take the stairs early. The Stairwell Lounge awaits.", &"system")
+	if is_instance_valid(dungeon):
+		dungeon.turn_manager.spectate = true
+		dungeon.enter_spectate()
+	hud.visible = false
+	message_log.visible = false
+	waiting_room_screen.open(dungeon)
+
+
+## Floor's over; drop into the next one with the survivors.
+func _on_waiting_continue() -> void:
+	waiting_room_screen.close()
+	Crawlers.begin_floor()
 	GameState.floor_number += 1
-	Events.msg("You descend to floor %d." % GameState.floor_number, &"system")
 	if GameState.floor_number == 5:
 		Events.msg("PROTOTYPE DEPTHS CLEARED. The System is genuinely surprised. Keep descending if you like pain.", &"system")
 	elif randf() < 0.4:
 		Events.msg(Flavor.carl_news(), &"system")
-	call_deferred("_load_floor")
+	hud.visible = true
+	message_log.visible = true
+	_load_floor()
+	Events.msg("You descend to floor %d with %d fellow survivors." % [
+		GameState.floor_number, maxi(Crawlers.alive_count() - 1, 0)], &"system")
 
 
 func _on_player_died() -> void:
@@ -243,9 +267,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _can_open_modal() -> bool:
 	return is_instance_valid(dungeon) and dungeon.turn_manager != null \
 		and dungeon.turn_manager.state == TurnManager.State.AWAITING_INPUT \
+		and not dungeon.turn_manager.spectate \
 		and not race_class_screen.visible and not game_over_screen.visible \
 		and not shop_screen.visible and not guide_screen.visible \
-		and not achievements_screen.visible
+		and not achievements_screen.visible and not waiting_room_screen.visible
 
 
 func _process(_delta: float) -> void:
@@ -279,6 +304,13 @@ func _process(_delta: float) -> void:
 	if game_over_screen.visible:
 		game_over_screen.close()
 		start_run(CharGenerator.random_character())
+		return
+	if waiting_room_screen.visible:
+		# Fast-forward the lounge; continue once the floor above has ended
+		if Crawlers.floor_state == Crawlers.FloorState.ENDED:
+			_on_waiting_continue()
+		else:
+			dungeon.turn_manager.spectate_step()
 		return
 	if char_create_screen.visible:
 		char_create_screen._on_confirm()

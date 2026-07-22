@@ -36,6 +36,11 @@ var _sim_ctx := {}
 var _sim_floor := -1
 var _world_tick_count := 0
 
+## Spectating: the player has descended and is frozen in the waiting room
+## while the floor plays out at accelerated speed.
+const SPECTATE_MULT := 12
+var spectate := false
+
 
 ## The player's roster record (roster[0] when the cohort exists; a local
 ## mint keeps headless script-mode tests working without autoload state).
@@ -56,6 +61,8 @@ func player_record() -> CrawlerRecord:
 ## ticks on its own clock. Combat/resolution logic is shared with the
 ## turn-based path — only the scheduling differs.
 func _process(delta: float) -> void:
+	if spectate:
+		return  # the waiting room drives the accelerated floor via spectate_step
 	if not GameState.realtime_mode:
 		return
 	if state != State.AWAITING_INPUT:
@@ -130,6 +137,8 @@ func _realtime_ability() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if GameState.realtime_mode:
 		return  # real-time input is polled in _process
+	if spectate:
+		return  # frozen in the waiting room
 	if state != State.AWAITING_INPUT:
 		return
 	if event.is_action_pressed("move_up", true):
@@ -437,6 +446,8 @@ func _advance_cohort() -> void:
 ## Promote abstract crawlers that wander into the bubble; demote real ones
 ## that leave it.
 func _update_tiers() -> void:
+	if spectate or dungeon.player == null or not is_instance_valid(dungeon.player):
+		return  # no player anchor while spectating: everyone stays abstract
 	var ppos: Vector2i = dungeon.player.grid_pos
 	for cr in Crawlers.npc_records():
 		if not cr.alive or cr.descended:
@@ -511,41 +522,116 @@ func _post_turn() -> void:
 	Events.hud_refresh.emit()
 
 
+## The shared floor clock: ACTIVE counts down, GRACE crushes stragglers,
+## ENDED force-kills everyone who didn't descend. Runs every world tick (and
+## every accelerated spectate step once the player has taken the stairs).
 func _tick_floor_timer(c: CharacterData) -> void:
-	if GameState.floor_turns_left > 0:
-		GameState.floor_turns_left -= 1
-		match GameState.floor_turns_left:
-			100:
-				Events.msg("REMINDER: This floor closes in 100 turns. The System suggests you stop sightseeing.", &"system")
-			50:
-				Events.msg("WARNING: 50 turns until floor collapse. Descending is not mandatory, but neither is survival.", &"system")
-			25:
-				Events.msg("URGENT: 25 turns remaining. Your life insurance does not cover 'floor'.", &"system")
-			0:
-				Events.msg("THE FLOOR IS NOW CLOSED. Thank you for your participation. The ceiling will assist you shortly.", &"system")
-			_:
-				if GameState.floor_turns_left < 10:
-					Events.msg("Floor collapse in %d..." % GameState.floor_turns_left, &"system")
-		return
+	match Crawlers.floor_state:
+		Crawlers.FloorState.ACTIVE:
+			if GameState.floor_turns_left > 0:
+				GameState.floor_turns_left -= 1
+				match GameState.floor_turns_left:
+					100:
+						Events.msg("REMINDER: This floor closes in 100 turns. The System suggests you stop sightseeing.", &"system")
+					50:
+						Events.msg("WARNING: 50 turns until floor collapse. Descending is not mandatory, but neither is survival.", &"system")
+					25:
+						Events.msg("URGENT: 25 turns remaining. Your life insurance does not cover 'floor'.", &"system")
+					_:
+						if GameState.floor_turns_left < 10:
+							Events.msg("Floor collapse in %d..." % GameState.floor_turns_left, &"system")
+			else:
+				Crawlers.begin_grace()
+				Events.msg("THE FLOOR IS NOW CLOSED. Reach a stairwell or the ceiling reaches you.", &"system")
+		Crawlers.FloorState.GRACE:
+			_tick_grace(c)
+		Crawlers.FloorState.ENDED:
+			pass
 
-	# Floor is collapsed — but saferooms honor their warranty
-	if dungeon.grid.is_safe(dungeon.player.grid_pos):
-		if not _collapse_safe_notified:
-			_collapse_safe_notified = true
-			Events.msg("The floor collapses around the Safe Room. The System honors its warranty, begrudgingly.", &"system")
-		return
 
-	# Escalating damage every turn until descent or death
+func _tick_grace(c: CharacterData) -> void:
 	GameState.collapse_ticks += 1
 	var dmg: int = 5 * GameState.collapse_ticks
-	c.hp = maxi(c.hp - dmg, 0)
-	Events.msg("The ceiling grinds downward. You take %d crush damage." % dmg, &"combat")
-	if c.hp <= 0:
-		Events.msg("The floor claims another tenant.", &"system")
+
+	# The player crushes too — unless they've descended (spectating) or are
+	# standing in a saferoom (protected during grace, but NOT past floor end)
+	if not spectate and dungeon.player != null and is_instance_valid(dungeon.player):
+		if dungeon.grid.is_safe(dungeon.player.grid_pos):
+			if not _collapse_safe_notified:
+				_collapse_safe_notified = true
+				Events.msg("The Safe Room holds — for now. It will not survive the floor's end.", &"system")
+		else:
+			c.hp = maxi(c.hp - dmg, 0)
+			Events.msg("The ceiling grinds downward. You take %d crush damage." % dmg, &"combat")
+			if c.hp <= 0:
+				state = State.LOCKED
+				Events.player_died.emit()
+				return
+			Events.crush_survived.emit()
+
+	_crush_npcs(dmg)
+
+	Crawlers.grace_ticks_left -= 1
+	if Crawlers.grace_ticks_left <= 0:
+		_force_end_floor(c)
+
+
+## Grace crush applied to every non-descended NPC crawler; saferoom-standers
+## are spared during grace only.
+func _crush_npcs(dmg: int) -> void:
+	for cr in Crawlers.npc_records():
+		if not cr.alive or cr.descended:
+			continue
+		if cr.tier == CrawlerRecord.Tier.REAL and cr.entity != null and is_instance_valid(cr.entity):
+			if dungeon.grid.is_safe(cr.entity.grid_pos):
+				continue
+			damage_crawler(cr, dmg, "floor collapse")
+		else:
+			var room: int = dungeon.floor_data.room_of.get(cr.pos, -1)
+			if _room_is_saferoom(room):
+				continue
+			cr.sheet.hp = maxi(cr.sheet.hp - dmg, 0)
+			if cr.sheet.hp <= 0:
+				Crawlers.kill(cr, "floor collapse")
+
+
+func _room_is_saferoom(room: int) -> bool:
+	if room < 0 or room >= dungeon.floor_data.rooms.size():
+		return false
+	return dungeon.floor_data.rooms[room] == dungeon.floor_data.saferoom
+
+
+## The floor's hard end: anyone who didn't reach the stairs dies, saferoom or
+## not (this closes the camp-forever loophole).
+func _force_end_floor(c: CharacterData) -> void:
+	for cr in Crawlers.npc_records():
+		if not cr.alive or cr.descended:
+			continue
+		if cr.entity != null and is_instance_valid(cr.entity):
+			dungeon.grid.remove_entity(cr.entity.grid_pos)
+			dungeon.real_crawler_entities.erase(cr.entity)
+			cr.entity.queue_free()
+		cr.entity = null
+		cr.controller = null
+		cr.tier = CrawlerRecord.Tier.ABSTRACT
+		Crawlers.kill(cr, "floor closure")
+	Crawlers.end_floor()
+
+	var prec := player_record()
+	if not spectate and prec != null and not prec.descended:
+		Events.msg("The floor closes for good. You did not make it out.", &"system")
 		state = State.LOCKED
 		Events.player_died.emit()
-	else:
-		Events.crush_survived.emit()
+
+
+## One accelerated world tick while the player waits in the stairwell lounge:
+## no player, no bubble — just the abstract cohort and the shared clock.
+func spectate_step() -> void:
+	if Crawlers.floor_state == Crawlers.FloorState.ENDED:
+		return
+	_advance_cohort()
+	_tick_floor_timer(GameState.character)
+	Events.cohort_changed.emit()
 
 
 ## Race/class selection fires on arriving at floor 3, once per run.

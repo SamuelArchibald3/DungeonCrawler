@@ -103,6 +103,19 @@ static func shop_greeting() -> String:
 	return SHOP_GREETINGS[randi() % SHOP_GREETINGS.size()]
 
 
+const EMOTES := [
+	"%s waves at you. It's almost sweet.",
+	"%s gives you a thumbs up. Both thumbs, actually.",
+	"%s nods respectfully, crawler to crawler.",
+	"%s mimes 'good luck' and means maybe 60%% of it.",
+	"%s salutes. Unclear which army.",
+]
+
+
+static func emote(char_name: String) -> String:
+	return EMOTES[randi() % EMOTES.size()] % char_name
+
+
 static func random_name(rng: RandomNumberGenerator) -> String:
 	return "%s %s" % [
 		NAME_FIRST[rng.randi_range(0, NAME_FIRST.size() - 1)],

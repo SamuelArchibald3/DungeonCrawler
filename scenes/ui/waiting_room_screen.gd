@@ -9,6 +9,8 @@ signal continue_pressed
 
 var _dungeon: Dungeon
 var _accum := 0.0
+var _deaths_pending := 0
+var _last_notable := ""
 var _counters: Label
 var _feed: RichTextLabel
 var _board: RichTextLabel
@@ -126,7 +128,21 @@ func _process(delta: float) -> void:
 	while _accum >= step and Crawlers.floor_state != Crawlers.FloorState.ENDED:
 		_accum -= step
 		_dungeon.turn_manager.spectate_step()
+	_flush_deaths()
 	_refresh()
+
+
+## Deaths pour in fast at 12x speed — collapse a frame's worth to one line.
+func _flush_deaths() -> void:
+	if _deaths_pending <= 0:
+		return
+	if _deaths_pending == 1 and _last_notable != "":
+		_feed.append_text("[color=#e05050]%s. %d remain.[/color]\n" % [_last_notable, Crawlers.alive_count()])
+	else:
+		_feed.append_text("[color=#e05050]%d crawlers died. %d remain.[/color]\n" % [
+			_deaths_pending, Crawlers.alive_count()])
+	_deaths_pending = 0
+	_last_notable = ""
 
 
 func _refresh() -> void:
@@ -157,8 +173,10 @@ func _on_crawler_event(kind: StringName, crawler: CrawlerRecord, _data: Dictiona
 		return
 	match kind:
 		&"died":
-			_feed.append_text("[color=#e05050]%s has died. %d remain.[/color]\n" % [
-				crawler.sheet.char_name, Crawlers.alive_count()])
+			_deaths_pending += 1
+			_last_notable = "%s has died" % crawler.sheet.char_name
+		&"pvp_kill":
+			_feed.append_text("[color=#c86464]%s[/color]\n" % str(_data.get("summary", "A crawler murdered another")))
 		&"descended":
 			if not crawler.is_player:
 				_feed.append_text("[color=#909090]%s reached the stairs.[/color]\n" % crawler.sheet.char_name)

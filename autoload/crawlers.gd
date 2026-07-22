@@ -51,6 +51,7 @@ func start_cohort(player_sheet: CharacterData) -> void:
 func begin_floor() -> void:
 	floor_state = FloorState.ACTIVE
 	grace_ticks_left = 0
+	var flips := 0
 	for cr in roster:
 		if not cr.alive:
 			continue
@@ -64,7 +65,12 @@ func begin_floor() -> void:
 			if cr.disposition == CrawlerRecord.Disposition.WARY \
 					and randf() < 0.04 * GameState.floor_number:
 				cr.disposition = CrawlerRecord.Disposition.HOSTILE
+				flips += 1
+	Events.floor_state_changed.emit(floor_state)
 	Events.cohort_changed.emit()
+	if flips > 0:
+		Events.announce.emit("DESPERATION SETS IN",
+			"%d crawlers snapped and turned killer. The floor just got meaner." % flips)
 
 
 ## Scatter surviving NPCs across the floor's crawler spawn points.

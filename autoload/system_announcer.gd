@@ -17,10 +17,16 @@ const FLOOR_LINES := [
 ]
 
 
+var _floor_deaths := 0
+var _last_alive := -1
+
+
 func _ready() -> void:
 	Events.level_up.connect(_on_level_up)
 	Events.floor_changed.connect(_on_floor_changed)
 	Events.player_died.connect(_on_player_died)
+	Events.crawler_event.connect(_on_crawler_event)
+	Events.floor_state_changed.connect(_on_floor_state_changed)
 	Events.race_class_completed.connect(func() -> void:
 		Events.announce.emit("NEW YOU", "Race and class installed. Side effects include everything."))
 	Events.borough_boss_killed.connect(func() -> void:
@@ -45,3 +51,36 @@ func _on_floor_changed(floor_number: int) -> void:
 
 func _on_player_died() -> void:
 	Events.announce.emit("CRAWLER TERMINATED", Flavor.eulogy())
+
+
+func _on_floor_state_changed(state: int) -> void:
+	if state == Crawlers.FloorState.ACTIVE:
+		_floor_deaths = 0
+		_last_alive = Crawlers.alive_count()
+
+
+## Cohort notables: first blood, milestone culls, the halfway mark, your kills.
+func _on_crawler_event(kind: StringName, crawler: CrawlerRecord, data: Dictionary) -> void:
+	if kind != &"died":
+		return
+	if _last_alive < 0:
+		_last_alive = Crawlers.alive_count() + 1
+	_floor_deaths += 1
+	var alive := Crawlers.alive_count()
+
+	var killer: Variant = data.get("killer")
+	if killer != null and killer is CrawlerRecord and (killer as CrawlerRecord).is_player:
+		Events.announce.emit("CONFIRMED KILL",
+			"%s falls to you. The viewers are feral." % crawler.sheet.char_name)
+	elif _floor_deaths == 1:
+		Events.announce.emit("FIRST BLOOD",
+			"%s is first to fall this floor. %d crawlers remain." % [crawler.sheet.char_name, alive])
+	elif _floor_deaths % 25 == 0:
+		Events.announce.emit("THE CULLING",
+			"%d dead on this floor alone. The System is thoroughly entertained." % _floor_deaths)
+
+	var half := maxi(Crawlers.roster.size() / 2, 1)
+	if _last_alive > half and alive <= half and Crawlers.roster.size() > 4:
+		Events.announce.emit("HALFWAY THERE",
+			"Half the cohort is gone. %d crawlers still breathing." % alive)
+	_last_alive = alive

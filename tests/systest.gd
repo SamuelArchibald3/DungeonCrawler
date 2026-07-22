@@ -1032,6 +1032,21 @@ func _run() -> void:
 		dungeon.turn_manager._sim_floor = -1  # rebuild ctx cleanly for later checks
 	c.hp = c.max_hp
 
+	# --- Cohort M6: announcer notables ---
+	Events.floor_state_changed.emit(Crawlers.FloorState.ACTIVE)  # reset announcer counters
+	var q_before: int = main.notification_box.queue_size()
+	var victim_rec := CrawlerRecord.make(980, CharGenerator.random_character())
+	Crawlers.roster.append(victim_rec)
+	Events.crawler_event.emit(&"died", victim_rec, {})
+	check(main.notification_box.queue_size() > q_before, "first cohort death pops a First Blood notable")
+	var q_mid: int = main.notification_box.queue_size()
+	var victim2 := CrawlerRecord.make(981, CharGenerator.random_character())
+	Crawlers.roster.append(victim2)
+	Events.crawler_event.emit(&"died", victim2, { "killer": Crawlers.player_record() })
+	check(main.notification_box.queue_size() > q_mid, "a kill credited to you pops a notable")
+	Crawlers.roster.erase(victim_rec)
+	Crawlers.roster.erase(victim2)
+
 	# --- Death path shows game over ---
 	c.hp = 0
 	Events.player_died.emit()

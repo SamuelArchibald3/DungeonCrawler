@@ -46,7 +46,7 @@ func _on_crawler_event(kind: StringName, crawler: CrawlerRecord, data: Dictionar
 			_text.append_text("[color=#909090]Crawler %s has taken the stairs. %d below.[/color]\n" % [
 				crawler.sheet.char_name, Crawlers.descended_count()])
 		&"emote":
-			_text.append_text("[color=#7fd8e8]%s waves at you.[/color]\n" % crawler.sheet.char_name)
+			_text.append_text("[color=#7fd8e8]%s[/color]\n" % Flavor.emote(crawler.sheet.char_name))
 
 
 func _on_message(text: String, category: StringName) -> void:
